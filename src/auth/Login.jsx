@@ -9,6 +9,18 @@ import EmblemNepal from "../assets/Emblem_of_Nepal.png";
 import KmcLogo from "../assets/kmc_logo.png";
 import map from "../assets/map16.jpg";
 
+import api from "../api/axios";   // adjust path if needed
+
+function getCSRFToken() {
+  const cookies = document.cookie.split("; ");
+  for (let cookie of cookies) {
+    if (cookie.startsWith("csrftoken=")) {
+      return cookie.split("=")[1];
+    }
+  }
+  return null;
+}
+
 export default function Login() {
   const navigate = useNavigate();
 
@@ -17,21 +29,42 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const { login } = useAuth();
+const handleLogin = async (e) => {
+  e.preventDefault();
 
-    if (!email || !password) {
-      alert("Please enter email and password");
-      return;
-    }
+  if (!email || !password) {
+    alert("Please enter email and password");
+    return;
+  }
 
+  try {
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/app/dashboard");
-    }, 1200);
-  };
+    // 🔥 VERY IMPORTANT — ensure CSRF cookie exists
+    await api.get("auth/csrf/");
+
+    const csrfToken = getCSRFToken();
+
+    await api.post(
+      "auth/login/",
+      { email, password },
+      {
+        headers: {
+          "X-CSRFToken": csrfToken,
+        },
+      }
+    );
+
+    navigate("/app/dashboard");
+
+  } catch (error) {
+    console.log("LOGIN ERROR:", error.response);
+    alert("Invalid email or password");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#062A4D] to-[#0C3F6E] px-4 relative overflow-hidden">
