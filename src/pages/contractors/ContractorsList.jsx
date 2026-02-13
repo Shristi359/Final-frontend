@@ -1,74 +1,107 @@
-import { Plus } from "lucide-react";
+import { Plus, Phone, Mail, MapPin, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ContractorsList() {
   const navigate = useNavigate();
 
-  const contractors = [
-    {
-      id: 1,
-      name: "ABC Builders",
-      contact: "9841XXXXXX",
-      email: "abc@builders.com",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Urban Infra Pvt. Ltd.",
-      contact: "9818XXXXXX",
-      email: "urban@infra.com",
-      status: "Inactive",
-    },
-  ];
-
   return (
     <div className="space-y-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Contractors</h2>
+
+      {/* TOP SECTION */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
         <button
           onClick={() => navigate("/app/contractors/add")}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded"
+          className="flex items-center gap-2 bg-[#1F4E79] hover:bg-[#163a5a] text-white px-6 py-3 rounded-xl shadow transition"
         >
           <Plus size={18} />
           Add Contractor
         </button>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+          <div>
+            <p className="text-xl font-semibold text-blue-600">6</p>
+            <p className="text-xs text-gray-500">Total</p>
+          </div>
+          <div>
+            <p className="text-xl font-semibold text-green-600">4</p>
+            <p className="text-xs text-gray-500">Active</p>
+          </div>
+          <div>
+            <p className="text-xl font-semibold text-gray-600">1</p>
+            <p className="text-xs text-gray-500">Inactive</p>
+          </div>
+          <div>
+            <p className="text-xl font-semibold text-orange-500">1</p>
+            <p className="text-xs text-gray-500">Pending</p>
+          </div>
+        </div>
+
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-2">Name</th>
-              <th className="text-left px-4 py-2">Contact</th>
-              <th className="text-left px-4 py-2">Email</th>
-              <th className="text-left px-4 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {contractors.map((c) => (
-              <tr key={c.id} className="border-t">
-                <td className="px-4 py-2">{c.name}</td>
-                <td className="px-4 py-2">{c.contact}</td>
-                <td className="px-4 py-2">{c.email}</td>
-                <td className="px-4 py-2">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      c.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {c.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* CONTRACTOR CARD */}
+      <div className="bg-white rounded-2xl shadow p-6 space-y-6">
+
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Himalayan Construction Pvt. Ltd.
+            </h2>
+            <p className="text-sm text-gray-500">
+              Contact: Rajesh Sharma
+            </p>
+          </div>
+
+          <span className="bg-green-100 text-green-600 px-4 py-1 text-sm rounded-full">
+            Active
+          </span>
+        </div>
+
+        {/* DETAILS */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-600">
+
+          <div className="flex items-center gap-2">
+            <Phone size={16} />
+            +977 9851234567
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Mail size={16} />
+            info@himalayanconst.com
+          </div>
+
+          <div className="flex items-center gap-2">
+            <MapPin size={16} />
+            Kathmandu
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Building2 size={16} />
+            Road Construction
+          </div>
+
+        </div>
+
+        {/* STATS */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-gray-100 rounded-xl p-6 text-center">
+            <p className="text-2xl font-bold text-blue-600">3</p>
+            <p className="text-sm text-gray-500">Active Projects</p>
+          </div>
+
+          <div className="bg-green-50 rounded-xl p-6 text-center">
+            <p className="text-2xl font-bold text-green-600">12</p>
+            <p className="text-sm text-gray-500">Completed</p>
+          </div>
+        </div>
+
+        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl transition">
+          View Details
+        </button>
+
       </div>
+
     </div>
   );
 }
