@@ -1,4 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
@@ -19,12 +25,17 @@ import AddProject from "./pages/projects/AddProject";
 import ContractorsList from "./pages/contractors/ContractorsList";
 import AddContractor from "./pages/contractors/AddContractor";
 
+// DELAY LOGS
+import DelayLogs from "./pages/delay/DelayLogs";
+
 function AppLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
+
       <div className="flex-1 flex flex-col">
         <Topbar />
+
         <main className="p-6 overflow-y-auto flex-1">
           <Outlet />
         </main>
@@ -37,13 +48,13 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Default → Login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        {/* Default Route → Redirect to Login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Public */}
+        {/* Public Route */}
         <Route path="/login" element={<Login />} />
 
-        {/* Protected Layout */}
+        {/* Protected App Layout */}
         <Route
           path="/app"
           element={
@@ -52,7 +63,7 @@ export default function App() {
             </RequireAuth>
           }
         >
-          {/* Nested Routes */}
+          {/* Dashboard */}
           <Route path="dashboard" element={<Dashboard />} />
 
           {/* Projects */}
@@ -65,7 +76,16 @@ export default function App() {
           {/* Contractors */}
           <Route path="contractors" element={<ContractorsList />} />
           <Route path="contractors/add" element={<AddContractor />} />
+
+          {/* Delay Logs */}
+          <Route path="delay-logs" element={<DelayLogs />} />
+
+          {/* Fallback inside /app */}
+          <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>
+
+        {/* Global Fallback */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

@@ -62,11 +62,11 @@ export default function Sidebar() {
           {!collapsed && <span>Projects</span>}
         </NavLink>
 
-        <NavLink to="/app/projects/delayed" className={linkClass}>
+        <NavLink to="/app/delay-logs" className={linkClass}>
           <Clock size={18} />
           {!collapsed && (
             <>
-              <span className="flex-1">Delayed</span>
+              <span className="flex-1">Delay Logs</span>
               <span className="bg-red-500 text-xs px-2 py-0.5 rounded-full">
                 3
               </span>
