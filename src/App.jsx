@@ -21,6 +21,15 @@ import CompletedProjects from "./pages/projects/CompletedProjects";
 import DelayedProjects from "./pages/projects/DelayedProjects";
 import AddProject from "./pages/projects/AddProject";
 
+// PROJECT DETAILS
+import ProjectLayout from "./pages/projects/ProjectLayout";
+import ProjectOverview from "./pages/projects/ProjectOverview";
+import ProjectMeasurement from "./pages/projects/ProjectMeasurement";
+import ProjectAbstract from "./pages/projects/ProjectAbstract";
+import ProjectMaterials from "./pages/projects/ProjectMaterials";
+import ProjectGantt from "./pages/projects/ProjectGantt.jsx";
+import ProjectLogs from "./pages/projects/ProjectLogs"; // NEW: Import ProjectLogs
+
 // CONTRACTORS
 import ContractorsList from "./pages/contractors/ContractorsList";
 import AddContractor from "./pages/contractors/AddContractor";
@@ -66,19 +75,34 @@ export default function App() {
           {/* Dashboard */}
           <Route path="dashboard" element={<Dashboard />} />
 
-          {/* Projects */}
+          {/* Projects Lists */}
           <Route path="projects" element={<ProjectsList />} />
           <Route path="projects/ongoing" element={<OngoingProjects />} />
           <Route path="projects/completed" element={<CompletedProjects />} />
           <Route path="projects/delayed" element={<DelayedProjects />} />
           <Route path="projects/add" element={<AddProject />} />
 
+          {/* Project Detail Layout with Tabs */}
+          <Route path="projects/:projectId" element={<ProjectLayout />}>
+            {/* Default redirect to overview */}
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<ProjectOverview />} />
+            <Route path="measurement" element={<ProjectMeasurement />} />
+            <Route path="abstract" element={<ProjectAbstract />} />
+            <Route path="materials" element={<ProjectMaterials />} />
+            <Route path="gantt" element={<ProjectGantt />} />
+          </Route>
+
+          {/* NEW: Project Logs - Standalone page (not inside ProjectLayout) */}
+          <Route path="projects/:projectId/logs" element={<ProjectLogs />} />
+
           {/* Contractors */}
           <Route path="contractors" element={<ContractorsList />} />
           <Route path="contractors/add" element={<AddContractor />} />
 
-          {/* Delay Logs */}
-          <Route path="delay-logs" element={<DelayLogs />} />
+          {/* Delay Logs - Project specific */}
+          <Route path="delay-logs/:projectId" element={<DelayLogs />} />
+
 
           {/* Fallback inside /app */}
           <Route path="*" element={<Navigate to="dashboard" replace />} />
