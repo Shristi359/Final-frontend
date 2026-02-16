@@ -1,75 +1,112 @@
-import { NavLink, Outlet, useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, Outlet, useLocation } from "react-router-dom";
+import { 
+  FileText, 
+  Ruler, 
+  FileSpreadsheet, 
+  Package, 
+  BarChart3,
+  Calendar,
+  ArrowLeft 
+} from "lucide-react";
 
 export default function ProjectLayout() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const tabClass = ({ isActive }) =>
-    `px-4 py-2 rounded transition-colors ${
-      isActive 
-        ? "bg-blue-500 text-white" 
-        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-    }`;
+  useEffect(() => {
+    fetchProject();
+  }, [projectId]);
 
-  const handleBack = () => {
-    // Determine where to go back based on previous location
-    const from = location.state?.from;
-    
-    if (from === 'delayed') {
-      navigate('/app/projects/delayed');
-    } else if (from === 'ongoing') {
-      navigate('/app/projects/ongoing');
-    } else if (from === 'completed') {
-      navigate('/app/projects/completed');
-    } else {
-      navigate('/app/projects');
+  const fetchProject = async () => {
+    try {
+      const response = await fetch(`/api/projects/project/${projectId}/`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      setProject(data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching project:", error);
+      setLoading(false);
     }
   };
 
+  const tabs = [
+    { name: 'Overview', path: 'overview', icon: FileText },
+    { name: 'Measurement', path: 'measurement', icon: Ruler },
+    { name: 'Abstract', path: 'abstract', icon: FileSpreadsheet },
+    { name: 'Materials', path: 'materials', icon: Package },
+    { name: 'Gantt Chart', path: 'gantt', icon: BarChart3 },
+    { name: 'Weekly Logs', path: 'weekly-logs', icon: Calendar },
+  ];
+
+  const currentPath = location.pathname.split('/').pop();
+  const activeTab = tabs.find(tab => tab.path === currentPath) || tabs[0];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading project...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header with Back Button */}
+      {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={handleBack}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          title="Back to Projects List"
+          onClick={() => navigate('/app/projects')}
+          className="p-2 hover:bg-gray-100 rounded-lg transition"
         >
-          <ArrowLeft className="w-6 h-6 text-gray-600" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-gray-800">
-          Project Details
-        </h2>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {project?.project_name || 'Project Details'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Code: {project?.project_code || 'N/A'}
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-3 flex-wrap">
-        <NavLink to="overview" className={tabClass}>
-          Overview
-        </NavLink>
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = tab.path === currentPath;
+              
+              return (
+                <button
+                  key={tab.path}
+                  onClick={() => navigate(`/app/projects/${projectId}/${tab.path}`)}
+                  className={`
+                    group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm
+                    ${isActive
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }
+                  `}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'}`} />
+                  {tab.name}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
-        <NavLink to="measurement" className={tabClass}>
-          Measurement Book
-        </NavLink>
-
-        <NavLink to="abstract" className={tabClass}>
-          Abstract Record
-        </NavLink>
-
-        <NavLink to="materials" className={tabClass}>
-          Materials
-        </NavLink>
-
-        <NavLink to="gantt" className={tabClass}>
-          Gantt Chart
-        </NavLink>
-      </div>
-
-      {/* Tab Content */}
-      <div>
-        <Outlet />
+        {/* Tab Content */}
+        <div className="p-6">
+          <Outlet />
+        </div>
       </div>
     </div>
   );

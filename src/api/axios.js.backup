@@ -1,14 +1,14 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "/api/",
-  withCredentials: true,
+  baseURL: "/api/",  // Your existing proxy setup
+  withCredentials: true, // Your login needs this
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// CSRF HANDLING
+// YOUR EXISTING CSRF HANDLING (Don't touch!)
 api.interceptors.request.use(
   (config) => {
     const csrfToken = getCookie("csrftoken");
@@ -22,7 +22,7 @@ api.interceptors.request.use(
   }
 );
 
-// AUTH REDIRECT
+// YOUR EXISTING AUTH REDIRECT (Don't touch!)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,7 +33,7 @@ api.interceptors.response.use(
   }
 );
 
-// HELPER
+// YOUR EXISTING HELPER (Don't touch!)
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== "") {
@@ -49,13 +49,13 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// ========== API ENDPOINTS ==========
+// ========== NEW: API ENDPOINTS (Safe to add!) ==========
 
-// AUTH
+// AUTH (includes your existing login)
 export const authAPI = {
-  getCsrf: () => api.get('auth/csrf/'),
-  register: (data) => api.post('auth/register/', data),
-  login: (data) => api.post('auth/login/', data),
+  getCsrf: () => api.get('accounts/csrf/'),
+  register: (data) => api.post('accounts/register/', data),
+  login: (data) => api.post('auth/login/', data),  // Your login still works!
   logout: () => api.post('auth/logout/'),
   me: () => api.get('auth/me/'),
 };
@@ -71,31 +71,12 @@ export const lookupsAPI = {
   fiscalYears: () => api.get('lookups/fiscal-years/'),
 };
 
-// CONTRACTORS (with FormData support for file uploads)
+// CONTRACTORS
 export const contractorsAPI = {
   list: () => api.get('contractors/contractor/'),
   get: (id) => api.get(`contractors/contractor/${id}/`),
-  create: (data) => {
-    // If data is FormData, remove Content-Type header (browser sets it automatically with boundary)
-    const config = data instanceof FormData 
-      ? { 
-          headers: { 
-            'Content-Type': 'multipart/form-data'
-          } 
-        }
-      : {};
-    return api.post('contractors/contractor/', data, config);
-  },
-  update: (id, data) => {
-    const config = data instanceof FormData 
-      ? { 
-          headers: { 
-            'Content-Type': 'multipart/form-data'
-          } 
-        }
-      : {};
-    return api.put(`contractors/contractor/${id}/`, data, config);
-  },
+  create: (data) => api.post('contractors/contractor/', data),
+  update: (id, data) => api.put(`contractors/contractor/${id}/`, data),
   delete: (id) => api.delete(`contractors/contractor/${id}/`),
 };
 
@@ -121,7 +102,7 @@ export const engineersAPI = {
 export const accountsAPI = {
   list: () => api.get('accounts/'),
   get: (id) => api.get(`accounts/${id}/`),
-  create: (data) => api.post('auth/register/', data),
+  create: (data) => api.post('accounts/register/', data),
 };
 
 // PROJECTS
@@ -145,13 +126,7 @@ export const milestonesAPI = {
 // WEEKLY LOGS
 export const weeklyLogsAPI = {
   list: (projectId) => api.get('logs/weekly-logs/', { params: { project: projectId } }),
-  create: (data) => {
-    // Support FormData for photo uploads
-    const config = data instanceof FormData 
-      ? { headers: { 'Content-Type': 'multipart/form-data' } }
-      : {};
-    return api.post('logs/weekly-logs/', data, config);
-  },
+  create: (data) => api.post('logs/weekly-logs/', data),
 };
 
 // DELAY LOGS

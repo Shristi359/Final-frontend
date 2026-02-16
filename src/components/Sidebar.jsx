@@ -9,6 +9,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Users,
+  HardHat,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -55,6 +57,16 @@ export default function Sidebar() {
         <NavLink to="/app/contractors" className={linkClass}>
           <Briefcase size={18} />
           {!collapsed && <span>Contractors</span>}
+        </NavLink>
+
+        <NavLink to="/app/engineers" className={linkClass}>
+          <HardHat size={18} />
+          {!collapsed && <span>Engineers</span>}
+        </NavLink>
+
+        <NavLink to="/app/chairpersons" className={linkClass}>
+          <Users size={18} />
+          {!collapsed && <span>Chairpersons</span>}
         </NavLink>
 
         <NavLink to="/app/projects" className={linkClass}>

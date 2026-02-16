@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Clock, AlertTriangle } from "lucide-react";
+import { Eye, FileText, AlertTriangle } from "lucide-react";
 
 export default function DelayedProjects() {
   const navigate = useNavigate();
@@ -70,9 +70,9 @@ export default function DelayedProjects() {
     });
   };
 
-  const handleDelayLog = (projectId) => {
-    // Navigate to delay logs page
-    navigate(`/app/delay-logs/${projectId}`);
+  const handleWeeklyLogs = (projectId) => {
+    // Navigate to weekly logs page (can add new logs)
+    navigate(`/app/projects/${projectId}/weekly-logs`);
   };
 
   if (loading) {
@@ -138,11 +138,11 @@ export default function DelayedProjects() {
                   </button>
                   
                   <button
-                    onClick={() => handleDelayLog(project.id)}
-                    className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors"
+                    onClick={() => handleWeeklyLogs(project.id)}
+                    className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
                   >
-                    <Clock className="w-4 h-4" />
-                    Delay Log
+                    <FileText className="w-4 h-4" />
+                    Weekly Logs
                   </button>
                   
                   {hasDelayLog ? (
