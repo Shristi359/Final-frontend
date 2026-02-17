@@ -12,23 +12,17 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const csrfToken = getCookie("csrftoken");
-    if (csrfToken) {
-      config.headers["X-CSRFToken"] = csrfToken;
-    }
+    if (csrfToken) config.headers["X-CSRFToken"] = csrfToken;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // AUTH REDIRECT
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      window.location.href = "/login";
-    }
+    if (error.response?.status === 401) window.location.href = "/login";
     return Promise.reject(error);
   }
 );
@@ -53,136 +47,125 @@ function getCookie(name) {
 
 // AUTH
 export const authAPI = {
-  getCsrf: () => api.get('auth/csrf/'),
-  register: (data) => api.post('auth/register/', data),
-  login: (data) => api.post('auth/login/', data),
-  logout: () => api.post('auth/logout/'),
-  me: () => api.get('auth/me/'),
+  getCsrf:  ()     => api.get("auth/csrf/"),
+  register: (data) => api.post("auth/register/", data),
+  login:    (data) => api.post("auth/login/", data),
+  logout:   ()     => api.post("auth/logout/"),
+  me:       ()     => api.get("auth/me/"),
 };
 
 // LOOKUPS
 export const lookupsAPI = {
-  priorityLevels: () => api.get('lookups/priority-levels/'),
-  projectTypes: () => api.get('lookups/project-types/'),
-  roadTypes: () => api.get('lookups/road-types/'),
-  delayTypes: () => api.get('lookups/delay-types/'),
-  alertTypes: () => api.get('lookups/alert-types/'),
-  budgetSources: () => api.get('lookups/budget-sources/'),
-  fiscalYears: () => api.get('lookups/fiscal-years/'),
+  priorityLevels: () => api.get("lookups/priority-levels/"),
+  projectTypes:   () => api.get("lookups/project-types/"),
+  roadTypes:      () => api.get("lookups/road-types/"),
+  delayTypes:     () => api.get("lookups/delay-types/"),
+  alertTypes:     () => api.get("lookups/alert-types/"),
+  budgetSources:  () => api.get("lookups/budget-sources/"),
+  fiscalYears:    () => api.get("lookups/fiscal-years/"),
 };
 
-// CONTRACTORS (with FormData support for file uploads)
+// Helper: build config for FormData vs JSON
+const formDataConfig = (data) =>
+  data instanceof FormData
+    ? { headers: { "Content-Type": "multipart/form-data" } }
+    : {};
+
+// CONTRACTORS
 export const contractorsAPI = {
-  list: () => api.get('contractors/contractor/'),
-  get: (id) => api.get(`contractors/contractor/${id}/`),
-  create: (data) => {
-    // If data is FormData, remove Content-Type header (browser sets it automatically with boundary)
-    const config = data instanceof FormData 
-      ? { 
-          headers: { 
-            'Content-Type': 'multipart/form-data'
-          } 
-        }
-      : {};
-    return api.post('contractors/contractor/', data, config);
-  },
-  update: (id, data) => {
-    const config = data instanceof FormData 
-      ? { 
-          headers: { 
-            'Content-Type': 'multipart/form-data'
-          } 
-        }
-      : {};
-    return api.put(`contractors/contractor/${id}/`, data, config);
-  },
-  delete: (id) => api.delete(`contractors/contractor/${id}/`),
+  list:   ()         => api.get("contractors/contractor/"),
+  get:    (id)       => api.get(`contractors/contractor/${id}/`),
+  create: (data)     => api.post("contractors/contractor/", data, formDataConfig(data)),
+  update: (id, data) => api.patch(`contractors/contractor/${id}/`, data, formDataConfig(data)), // PATCH not PUT
+  delete: (id)       => api.delete(`contractors/contractor/${id}/`),
 };
 
 // CHAIRPERSONS
 export const chairpersonsAPI = {
-  list: () => api.get('chairpersons/chairperson/'),
-  get: (id) => api.get(`chairpersons/chairperson/${id}/`),
-  create: (data) => api.post('chairpersons/chairperson/', data),
-  update: (id, data) => api.put(`chairpersons/chairperson/${id}/`, data),
-  delete: (id) => api.delete(`chairpersons/chairperson/${id}/`),
+  list:   ()         => api.get("chairpersons/chairperson/"),
+  get:    (id)       => api.get(`chairpersons/chairperson/${id}/`),
+  create: (data)     => api.post("chairpersons/chairperson/", data),
+  update: (id, data) => api.patch(`chairpersons/chairperson/${id}/`, data),
+  delete: (id)       => api.delete(`chairpersons/chairperson/${id}/`),
 };
 
 // ENGINEERS
 export const engineersAPI = {
-  list: () => api.get('engineers/engineer/'),
-  get: (id) => api.get(`engineers/engineer/${id}/`),
-  create: (data) => api.post('engineers/engineer/', data),
-  update: (id, data) => api.put(`engineers/engineer/${id}/`, data),
-  delete: (id) => api.delete(`engineers/engineer/${id}/`),
+  list:   ()         => api.get("engineers/engineer/"),
+  get:    (id)       => api.get(`engineers/engineer/${id}/`),
+  create: (data)     => api.post("engineers/engineer/", data),
+  update: (id, data) => api.patch(`engineers/engineer/${id}/`, data),
+  delete: (id)       => api.delete(`engineers/engineer/${id}/`),
 };
 
 // ACCOUNTS
 export const accountsAPI = {
-  list: () => api.get('accounts/'),
-  get: (id) => api.get(`accounts/${id}/`),
-  create: (data) => api.post('auth/register/', data),
+  list:   ()     => api.get("accounts/"),
+  get:    (id)   => api.get(`accounts/${id}/`),
+  create: (data) => api.post("auth/register/", data),
 };
 
 // PROJECTS
 export const projectsAPI = {
-  list: () => api.get('projects/project/'),
-  get: (id) => api.get(`projects/project/${id}/`),
-  create: (data) => api.post('projects/project/', data),
-  update: (id, data) => api.put(`projects/project/${id}/`, data),
-  delete: (id) => api.delete(`projects/project/${id}/`),
+  list:   ()         => api.get("projects/project/"),
+  get:    (id)       => api.get(`projects/project/${id}/`),
+  create: (data)     => api.post("projects/project/", data),
+  update: (id, data) => api.patch(`projects/project/${id}/`, data),
+  delete: (id)       => api.delete(`projects/project/${id}/`),
 };
 
 // MILESTONES
 export const milestonesAPI = {
-  list: (projectId) => api.get('milestones/milestone/', { params: { project: projectId } }),
-  get: (id) => api.get(`milestones/milestone/${id}/`),
-  create: (data) => api.post('milestones/milestone/', data),
-  update: (id, data) => api.put(`milestones/milestone/${id}/`, data),
-  delete: (id) => api.delete(`milestones/milestone/${id}/`),
+  list:   (projectId) => api.get("milestones/milestone/", { params: { project: projectId } }),
+  get:    (id)        => api.get(`milestones/milestone/${id}/`),
+  create: (data)      => api.post("milestones/milestone/", data),
+  update: (id, data)  => api.patch(`milestones/milestone/${id}/`, data),
+  delete: (id)        => api.delete(`milestones/milestone/${id}/`),
 };
 
 // WEEKLY LOGS
 export const weeklyLogsAPI = {
-  list: (projectId) => api.get('logs/weekly-logs/', { params: { project: projectId } }),
-  create: (data) => {
-    // Support FormData for photo uploads
-    const config = data instanceof FormData 
-      ? { headers: { 'Content-Type': 'multipart/form-data' } }
-      : {};
-    return api.post('logs/weekly-logs/', data, config);
-  },
+  list:   (projectId) => api.get("logs/weekly-logs/", { params: { project: projectId } }),
+  create: (data)      => api.post("logs/weekly-logs/", data, formDataConfig(data)),
 };
 
 // DELAY LOGS
 export const delayLogsAPI = {
-  list: (projectId) => api.get('logs/delay-logs/', { params: { project: projectId } }),
-  create: (data) => api.post('logs/delay-logs/', data),
+  list:   (projectId) => api.get("logs/delay-logs/", { params: { project: projectId } }),
+  create: (data)      => api.post("logs/delay-logs/", data),
+  update: (id, data)  => api.patch(`logs/delay-logs/${id}/`, data),
+  delete: (id)        => api.delete(`logs/delay-logs/${id}/`),
 };
 
 // ROADS
 export const roadsAPI = {
-  list: () => api.get('roads/road/'),
-  get: (id) => api.get(`roads/road/${id}/`),
-  create: (data) => api.post('roads/road/', data),
+  list:   ()     => api.get("roads/road/"),
+  get:    (id)   => api.get(`roads/road/${id}/`),
+  create: (data) => api.post("roads/road/", data),
 };
 
 // LOCATIONS
 export const locationsAPI = {
-  list: () => api.get('locations/location/'),
-  create: (data) => api.post('locations/location/', data),
+  list:   ()     => api.get("locations/location/"),
+  create: (data) => api.post("locations/location/", data),
 };
 
 // ALERTS
 export const alertsAPI = {
-  list: () => api.get('alerts/alerts/'),
-  markRead: (id) => api.patch(`alerts/alerts/${id}/`, { is_read: true }),
+  list:     ()    => api.get("alerts/alerts/"),
+  markRead: (id)  => api.patch(`alerts/alerts/${id}/`, { is_read: true }),
+};
+
+// PAST PROJECT RECORDS
+export const pastProjectRecordsAPI = {
+  list:   ()     => api.get("projects/past-project-records/"),
+  upload: (data) => api.post("projects/past-project-records/", data, { headers: { "Content-Type": "multipart/form-data" } }),
+  delete: (id)   => api.delete(`projects/past-project-records/${id}/`),
 };
 
 // AUDIT LOGS
 export const auditAPI = {
-  list: () => api.get('audit/audit-log/'),
+  list: () => api.get("audit/audit-log/"),
 };
 
-// Keep default export for backward compatibility
 export default api;

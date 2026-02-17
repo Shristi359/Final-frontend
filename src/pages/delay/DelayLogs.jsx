@@ -1,271 +1,168 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AlertTriangle, X, Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { AlertTriangle, X, Plus, Edit, Trash2, ArrowLeft, Loader2 } from "lucide-react";
+import { delayLogsAPI, projectsAPI, lookupsAPI, authAPI } from "../../api/axios";
 
 export default function DelayLogs() {
   const { projectId } = useParams();
-  const navigate = useNavigate();
-  const [showModal, setShowModal] = useState(false);
-  const [delayLogs, setDelayLogs] = useState([]);
-  const [projectInfo, setProjectInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const navigate      = useNavigate();
+
+  const [showModal, setShowModal]   = useState(false);
+  const [delayLogs, setDelayLogs]   = useState([]);
+  const [project, setProject]       = useState(null);
+  const [delayTypes, setDelayTypes] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading]       = useState(true);
   const [editingLog, setEditingLog] = useState(null);
 
   useEffect(() => {
-    if (projectId) {
-      fetchDelayLogs();
-      fetchProjectInfo();
-    }
+    if (projectId) fetchAll();
   }, [projectId]);
 
-  const fetchDelayLogs = async () => {
+  const fetchAll = async () => {
     try {
-      // Mock data for testing - replace with actual API call when backend is ready
-      const mockLogs = [
-        {
-          id: 1,
-          logDate: "2024-07-15",
-          delayType: "Weather",
-          estimatedDays: 10,
-          progress: 65,
-          description: "Heavy monsoon rainfall causing work stoppage",
-          actions: "Covered exposed areas, rescheduled workforce",
-          impact: "10 days delay in concrete work",
-          reportedBy: "Site Engineer - Ram Prasad",
-          status: "Resolved"
-        },
-        {
-          id: 2,
-          logDate: "2024-07-20",
-          delayType: "Material Shortage",
-          estimatedDays: 15,
-          progress: 68,
-          description: "Cement shortage due to supply chain issues",
-          actions: "Ordered from alternative supplier",
-          impact: "15 days delay overall",
-          reportedBy: "Project Manager - Sita Sharma",
-          status: "Ongoing"
-        }
-      ];
-      
-      setTimeout(() => {
-        setDelayLogs(mockLogs);
-        setLoading(false);
-      }, 300);
-    } catch (error) {
-      console.error("Error fetching delay logs:", error);
+      const [logsRes, projectRes, delayTypesRes, userRes] = await Promise.allSettled([
+        delayLogsAPI.list(projectId),
+        projectsAPI.get(projectId),
+        lookupsAPI.delayTypes(),
+        authAPI.me(),
+      ]);
+
+      if (logsRes.status === "fulfilled")       setDelayLogs(logsRes.value.data);
+      else console.error("Logs fetch failed:",       logsRes.reason);
+
+      if (projectRes.status === "fulfilled")    setProject(projectRes.value.data);
+      else console.error("Project fetch failed:",    projectRes.reason);
+
+      if (delayTypesRes.status === "fulfilled") setDelayTypes(delayTypesRes.value.data);
+      else console.error("Delay types fetch failed:", delayTypesRes.reason);
+
+      if (userRes.status === "fulfilled")       setCurrentUser(userRes.value.data);
+      else console.error("User fetch failed:",       userRes.reason);
+
+    } finally {
       setLoading(false);
     }
   };
 
-  const fetchProjectInfo = async () => {
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this delay log?")) return;
     try {
-      // Mock data - replace with actual API call when backend is ready
-      setProjectInfo({
-        id: projectId,
-        name: "Nepalgunj-Kohalpur Highway Section",
-        totalDelayDays: 45,
-        hasDocumentation: true
-      });
-    } catch (error) {
-      console.error("Error fetching project info:", error);
+      await delayLogsAPI.delete(id);
+      setDelayLogs(prev => prev.filter(l => l.id !== id));
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("Failed to delete delay log.");
     }
   };
 
-  const handleAddLog = () => {
-    setEditingLog(null);
-    setShowModal(true);
-  };
-
-  const handleEditLog = (log) => {
-    setEditingLog(log);
-    setShowModal(true);
-  };
-
-  const handleDeleteLog = async (logId) => {
-    if (window.confirm("Are you sure you want to delete this delay log?")) {
-      try {
-        setDelayLogs(delayLogs.filter(log => log.id !== logId));
-        alert("Delay log deleted successfully!");
-      } catch (error) {
-        console.error("Error deleting delay log:", error);
-        alert("Failed to delete delay log.");
-      }
-    }
-  };
-
-  const handleSubmitLog = (logData) => {
-    if (editingLog) {
-      // Update existing log
-      setDelayLogs(delayLogs.map(log => 
-        log.id === editingLog.id ? { ...logData, id: editingLog.id } : log
-      ));
+  const handleSaved = (log, isEdit) => {
+    if (isEdit) {
+      setDelayLogs(prev => prev.map(l => l.id === log.id ? log : l));
     } else {
-      // Add new log
-      setDelayLogs([...delayLogs, { ...logData, id: Date.now() }]);
+      setDelayLogs(prev => [log, ...prev]);
     }
     setShowModal(false);
     setEditingLog(null);
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Resolved":
-        return "bg-green-100 text-green-800";
-      case "Ongoing":
-        return "bg-yellow-100 text-yellow-800";
-      case "Critical":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const statusColor = (s) => ({
+    RESOLVED: "bg-green-100 text-green-800",
+    ONGOING:  "bg-yellow-100 text-yellow-800",
+    CRITICAL: "bg-red-100 text-red-800",
+  }[s] || "bg-gray-100 text-gray-800");
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading delay logs...</div>
-      </div>
-    );
-  }
+  const statusLabel = (s) => ({ RESOLVED: "Resolved", ONGOING: "Ongoing", CRITICAL: "Critical" }[s] || s);
+
+  const delayTypeLabel = (id) => delayTypes.find(d => d.id === id)?.name || id;
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header with Back Button */}
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/app/projects/delayed')}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            title="Back to Delayed Projects"
-          >
+          <button onClick={() => navigate("/app/projects/delayed")}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Back">
             <ArrowLeft className="w-6 h-6 text-gray-600" />
           </button>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-800">
-              Delay Logs Management
-            </h1>
-            {projectInfo && (
-              <p className="text-sm text-gray-600 mt-1">{projectInfo.name}</p>
-            )}
+            <h1 className="text-2xl font-semibold text-gray-800">Delay Logs</h1>
+            {project && <p className="text-sm text-gray-500 mt-0.5">{project.project_name}</p>}
           </div>
         </div>
-
-        <button
-          onClick={handleAddLog}
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition"
-        >
-          <Plus className="w-5 h-5" />
-          Add Delay Log
+        <button onClick={() => { setEditingLog(null); setShowModal(true); }}
+          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition">
+          <Plus className="w-5 h-5" /> Add Delay Log
         </button>
       </div>
 
-      {/* Alert Card - Show if no logs */}
-      {delayLogs.length === 0 && projectInfo && (
+      {/* No-log alert */}
+      {delayLogs.length === 0 && project && (
         <div className="border border-red-400 bg-red-50 rounded-xl p-5 flex justify-between items-center">
           <div>
-            <p className="font-semibold">{projectInfo.name}</p>
-            <p className="text-sm text-red-600">
-              Delayed for {projectInfo.totalDelayDays} days - NO DOCUMENTATION
-            </p>
+            <p className="font-semibold text-red-800">{project.project_name}</p>
+            <p className="text-sm text-red-600 mt-0.5">No delay documentation found for this project.</p>
           </div>
-
-          <button
-            onClick={handleAddLog}
-            className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition"
-          >
+          <button onClick={() => { setEditingLog(null); setShowModal(true); }}
+            className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition text-sm">
             Submit Delay Log
           </button>
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">TOTAL DELAY LOGS</p>
-          <p className="text-3xl font-bold text-gray-900">{delayLogs.length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">RESOLVED</p>
-          <p className="text-3xl font-bold text-green-600">
-            {delayLogs.filter(log => log.status === "Resolved").length}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">ONGOING</p>
-          <p className="text-3xl font-bold text-yellow-600">
-            {delayLogs.filter(log => log.status === "Ongoing").length}
-          </p>
-        </div>
+        <StatCard label="Total Delay Logs" value={delayLogs.length} color="text-gray-900" />
+        <StatCard label="Resolved" value={delayLogs.filter(l => l.status === "RESOLVED").length} color="text-green-600" />
+        <StatCard label="Ongoing / Critical" value={delayLogs.filter(l => l.status !== "RESOLVED").length} color="text-yellow-600" />
       </div>
 
-      {/* Delay Logs Table */}
+      {/* Table */}
       {delayLogs.length > 0 && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Log Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Delay Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estimated Days
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Progress
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {["Log Date","Delay Type","Est. Days","Progress","Description","Status","Actions"].map(h => (
+                    <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {delayLogs.map((log) => (
+              <tbody className="divide-y divide-gray-200">
+                {delayLogs.map(log => (
                   <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.logDate}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.delayType}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.log_date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{delayTypeLabel(log.delay_type)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
-                      {log.estimatedDays} days
+                      {log.estimated_days ?? "—"} days
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.progress}%
+                      {log.progress_percent != null ? `${log.progress_percent}%` : "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                      {log.description}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{log.delay_description}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(log.status)}`}>
-                        {log.status}
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${statusColor(log.status)}`}>
+                        {statusLabel(log.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditLog(log)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Edit"
-                        >
+                        <button onClick={() => { setEditingLog(log); setShowModal(true); }}
+                          className="text-gray-400 hover:text-blue-600 transition-colors" title="Edit">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteLog(log.id)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Delete"
-                        >
+                        <button onClick={() => handleDelete(log.id)}
+                          className="text-gray-400 hover:text-red-600 transition-colors" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -278,92 +175,154 @@ export default function DelayLogs() {
         </div>
       )}
 
+      {/* Modal */}
       {showModal && (
         <DelayLogModal
-          onClose={() => {
-            setShowModal(false);
-            setEditingLog(null);
-          }}
-          onSubmit={handleSubmitLog}
-          projectName={projectInfo?.name}
+          projectId={projectId}
+          projectName={project?.project_name}
+          delayTypes={delayTypes}
+          currentUser={currentUser}
           editingLog={editingLog}
+          onClose={() => { setShowModal(false); setEditingLog(null); }}
+          onSaved={handleSaved}
         />
       )}
     </div>
   );
 }
 
-/* ================= MODAL COMPONENT ================= */
+/* ---- MODAL ---- */
 
-function DelayLogModal({ onClose, onSubmit, projectName, editingLog }) {
+function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editingLog, onClose, onSaved }) {
+  const isEdit = Boolean(editingLog);
+
   const [formData, setFormData] = useState({
-    logDate: editingLog?.logDate || "",
-    delayType: editingLog?.delayType || "",
-    estimatedDays: editingLog?.estimatedDays || "",
-    progress: editingLog?.progress || "",
-    description: editingLog?.description || "",
-    actions: editingLog?.actions || "",
-    impact: editingLog?.impact || "",
-    reportedBy: editingLog?.reportedBy || "",
-    status: editingLog?.status || "Ongoing",
+    log_date:          editingLog?.log_date          || "",
+    delay_type:        editingLog?.delay_type        || "",
+    estimated_days:    editingLog?.estimated_days    || "",
+    progress_percent:  editingLog?.progress_percent  || "",
+    delay_description: editingLog?.delay_description || "",
+    actions_taken:     editingLog?.actions_taken     || "",
+    impact_on_schedule:editingLog?.impact_on_schedule|| "",
+    status:            editingLog?.status            || "ONGOING",
   });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.logDate || !formData.delayType || !formData.estimatedDays || 
-        !formData.description || !formData.actions || !formData.reportedBy) {
-      alert("Please fill in all required fields");
-      return;
+    setLoading(true);
+    setError(null);
+
+    const payload = {
+      project:            parseInt(projectId),
+      reported_by:        currentUser?.id || null,
+      log_date:           formData.log_date,
+      delay_type:         parseInt(formData.delay_type),
+      estimated_days:     formData.estimated_days     ? parseInt(formData.estimated_days)    : null,
+      progress_percent:   formData.progress_percent   ? parseFloat(formData.progress_percent): null,
+      delay_description:  formData.delay_description,
+      actions_taken:      formData.actions_taken,
+      impact_on_schedule: formData.impact_on_schedule || "",
+      status:             formData.status,
+    };
+
+    try {
+      let res;
+      if (isEdit) {
+        res = await delayLogsAPI.update(editingLog.id, payload);
+      } else {
+        res = await delayLogsAPI.create(payload);
+      }
+      onSaved(res.data, isEdit);
+    } catch (err) {
+      console.error("Error saving delay log:", err);
+      const data = err.response?.data;
+      setError(
+        data && typeof data === "object"
+          ? Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join(" | ")
+          : `Failed to ${isEdit ? "update" : "create"} delay log.`
+      );
+    } finally {
+      setLoading(false);
     }
-    
-    onSubmit(formData);
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 px-4">
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+
+        {/* Modal Header */}
         <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
             <AlertTriangle className="text-red-500" size={22} />
             <h2 className="text-lg font-semibold">
-              {editingLog ? "Edit Delay Log" : "Project Delay Log"} 
-              {projectName && ` - ${projectName}`}
+              {isEdit ? "Edit Delay Log" : "Add Delay Log"}
+              {projectName && <span className="text-gray-500 font-normal"> — {projectName}</span>}
             </h2>
           </div>
           <button onClick={onClose} className="hover:bg-gray-100 p-1 rounded">
-            <X />
+            <X size={20} />
           </button>
         </div>
 
         <div className="bg-red-50 border-l-4 border-red-500 p-4 text-sm text-red-700">
-          <strong>Important:</strong> Use this form to document any delays
-          affecting the project timeline.
+          <strong>Important:</strong> Use this form to document any delays affecting the project timeline.
         </div>
 
+        {error && (
+          <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <Input label="Log Date *" type="date" name="logDate" value={formData.logDate} onChange={handleChange} required />
-          <Select label="Delay Type *" name="delayType" value={formData.delayType} onChange={handleChange}
-            options={["Weather", "Material Shortage", "Labor Issues", "Administrative Delay", "Technical Issues", "Equipment Failure", "Design Changes", "Other"]} required />
-          <Input label="Estimated Delay (Days) *" name="estimatedDays" type="number" value={formData.estimatedDays} placeholder="e.g., 15" onChange={handleChange} required />
-          <Input label="Current Progress (%)" name="progress" type="number" value={formData.progress} placeholder="e.g., 65" onChange={handleChange} min="0" max="100" />
-          <Textarea label="Delay Description *" name="description" value={formData.description} placeholder="Provide detailed description..." onChange={handleChange} required />
-          <Textarea label="Actions Taken *" name="actions" value={formData.actions} placeholder="Describe corrective actions..." onChange={handleChange} required />
-          <Textarea label="Impact on Schedule" name="impact" value={formData.impact} placeholder="Describe schedule impact..." onChange={handleChange} />
-          <Input label="Reported By *" name="reportedBy" value={formData.reportedBy} placeholder="Your name and position" onChange={handleChange} required />
-          <Select label="Status" name="status" value={formData.status} onChange={handleChange} options={["Ongoing", "Resolved", "Critical"]} />
+          <ModalInput label="Log Date *"    type="date"   name="log_date"       value={formData.log_date}       onChange={handleChange} required />
+
+          {/* Delay Type from lookup */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Delay Type *</label>
+            <select name="delay_type" value={formData.delay_type} onChange={handleChange} required
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">Select Delay Type</option>
+              {delayTypes.map(dt => (
+                <option key={dt.id} value={dt.id}>{dt.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <ModalInput label="Estimated Delay (Days)" type="number" name="estimated_days"   value={formData.estimated_days}   onChange={handleChange} placeholder="e.g., 15" min="0" />
+          <ModalInput label="Current Progress (%)"   type="number" name="progress_percent" value={formData.progress_percent} onChange={handleChange} placeholder="e.g., 65" min="0" max="100" />
+          <ModalTextarea label="Delay Description *"  name="delay_description"  value={formData.delay_description}  onChange={handleChange} placeholder="Provide detailed description..." required />
+          <ModalTextarea label="Actions Taken *"      name="actions_taken"      value={formData.actions_taken}      onChange={handleChange} placeholder="Describe corrective actions..." required />
+          <ModalTextarea label="Impact on Schedule"   name="impact_on_schedule" value={formData.impact_on_schedule} onChange={handleChange} placeholder="Describe schedule impact..." />
+
+          {/* Status */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Status</label>
+            <select name="status" value={formData.status} onChange={handleChange}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="ONGOING">Ongoing</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="RESOLVED">Resolved</option>
+            </select>
+          </div>
 
           <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg transition font-medium">
+            <button type="button" onClick={onClose}
+              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg transition font-medium">
               Cancel
             </button>
-            <button type="submit" className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition font-medium">
-              {editingLog ? "Update Delay Log" : "Submit Delay Log"}
+            <button type="submit" disabled={loading}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition font-medium flex items-center justify-center gap-2">
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? "Saving..." : isEdit ? "Update Delay Log" : "Submit Delay Log"}
             </button>
           </div>
         </form>
@@ -372,37 +331,35 @@ function DelayLogModal({ onClose, onSubmit, projectName, editingLog }) {
   );
 }
 
-function Input({ label, name, type = "text", placeholder, onChange, value, required, min, max }) {
+/* ---- HELPERS ---- */
+
+function StatCard({ label, value, color }) {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow">
+      <p className="text-sm text-gray-500 mb-1 uppercase tracking-wide">{label}</p>
+      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function ModalInput({ label, name, type = "text", placeholder, onChange, value, required, min, max }) {
   return (
     <div className="space-y-1">
       <label className="text-sm font-medium text-gray-700">{label}</label>
-      <input type={type} name={name} value={value} placeholder={placeholder} onChange={onChange} required={required} min={min} max={max}
+      <input type={type} name={name} value={value} placeholder={placeholder}
+        onChange={onChange} required={required} min={min} max={max}
         className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
     </div>
   );
 }
 
-function Textarea({ label, name, placeholder, onChange, value, required }) {
+function ModalTextarea({ label, name, placeholder, onChange, value, required }) {
   return (
     <div className="space-y-1">
       <label className="text-sm font-medium text-gray-700">{label}</label>
-      <textarea name={name} value={value} rows="4" placeholder={placeholder} onChange={onChange} required={required}
-        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-    </div>
-  );
-}
-
-function Select({ label, name, options, onChange, value, required }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
-      <select name={name} value={value} onChange={onChange} required={required}
-        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-        <option value="">Select {label.replace(" *", "")}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
+      <textarea name={name} value={value} rows={4} placeholder={placeholder}
+        onChange={onChange} required={required}
+        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
     </div>
   );
 }

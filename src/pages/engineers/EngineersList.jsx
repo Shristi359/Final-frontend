@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Loader2, HardHat } from "lucide-react";
+import { Plus, Trash2, Loader2, HardHat, Eye, Pencil } from "lucide-react";
 import { engineersAPI } from "../../api/axios";
 
 export default function EngineersList() {
@@ -8,17 +8,15 @@ export default function EngineersList() {
   const [engineers, setEngineers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchEngineers();
-  }, []);
+  useEffect(() => { fetchEngineers(); }, []);
 
   const fetchEngineers = async () => {
     try {
-      const response = await engineersAPI.list();
-      setEngineers(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching engineers:", error);
+      const res = await engineersAPI.list();
+      setEngineers(res.data);
+    } catch (err) {
+      console.error("Error fetching engineers:", err);
+    } finally {
       setLoading(false);
     }
   };
@@ -27,22 +25,20 @@ export default function EngineersList() {
     if (window.confirm("Are you sure you want to delete this engineer?")) {
       try {
         await engineersAPI.delete(id);
-        setEngineers(engineers.filter(e => e.id !== id));
+        setEngineers(prev => prev.filter(e => e.id !== id));
         alert("Engineer deleted successfully");
-      } catch (error) {
-        console.error("Error deleting engineer:", error);
+      } catch (err) {
+        console.error("Error deleting engineer:", err);
         alert("Failed to delete engineer");
       }
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -87,38 +83,51 @@ export default function EngineersList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {engineers.map((engineer) => (
-                <tr key={engineer.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">
-                      {engineer.account?.full_name || 'N/A'}
-                    </div>
+              {engineers.map((e) => (
+                <tr key={e.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                    {e.account?.full_name || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {engineer.account?.email || 'N/A'}
+                    {e.account?.email || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {engineer.role || 'Engineer'}
+                    {e.role || "Engineer"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {engineer.ward_no || 'N/A'}
+                    {e.ward_no || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      engineer.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
+                      e.account?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                     }`}>
-                      {engineer.is_active ? 'Active' : 'Inactive'}
+                      {e.account?.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleDelete(engineer.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => navigate(`/app/engineers/${e.id}/view`)}
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="View details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/app/engineers/${e.id}/edit`)}
+                        className="text-gray-400 hover:text-amber-500 transition-colors"
+                        title="Edit engineer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(e.id)}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete engineer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

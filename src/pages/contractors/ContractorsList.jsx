@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Loader2, Briefcase } from "lucide-react";
+import { Plus, Trash2, Loader2, Briefcase, Eye, Pencil } from "lucide-react";
 import { contractorsAPI } from "../../api/axios";
 
 export default function ContractorsList() {
@@ -8,17 +8,15 @@ export default function ContractorsList() {
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchContractors();
-  }, []);
+  useEffect(() => { fetchContractors(); }, []);
 
   const fetchContractors = async () => {
     try {
-      const response = await contractorsAPI.list();
-      setContractors(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching contractors:", error);
+      const res = await contractorsAPI.list();
+      setContractors(res.data);
+    } catch (err) {
+      console.error("Error fetching contractors:", err);
+    } finally {
       setLoading(false);
     }
   };
@@ -27,22 +25,20 @@ export default function ContractorsList() {
     if (window.confirm("Are you sure you want to delete this contractor?")) {
       try {
         await contractorsAPI.delete(id);
-        setContractors(contractors.filter(c => c.id !== id));
+        setContractors(prev => prev.filter(c => c.id !== id));
         alert("Contractor deleted successfully");
-      } catch (error) {
-        console.error("Error deleting contractor:", error);
+      } catch (err) {
+        console.error("Error deleting contractor:", err);
         alert("Failed to delete contractor");
       }
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -87,26 +83,20 @@ export default function ContractorsList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {contractors.map((contractor) => (
-                <tr key={contractor.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">
-                      {contractor.contractor_name}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {contractor.company_name || 'N/A'}
-                  </td>
+              {contractors.map((c) => (
+                <tr key={c.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{c.contractor_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.company_name || "N/A"}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                      Type {contractor.contractor_type || 'N/A'}
+                      Type {c.contractor_type || "N/A"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {contractor.contact_number || contractor.email || 'N/A'}
+                    {c.contact_number || c.email || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {contractor.suchidarta_flagged ? (
+                    {c.suchidarta_flagged ? (
                       <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">
                         ✓ Active (Approved)
                       </span>
@@ -116,13 +106,30 @@ export default function ContractorsList() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleDelete(contractor.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => navigate(`/app/contractors/${c.id}/view`)}
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="View details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/app/contractors/${c.id}/edit`)}
+                        className="text-gray-400 hover:text-amber-500 transition-colors"
+                        title="Edit contractor"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete contractor"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

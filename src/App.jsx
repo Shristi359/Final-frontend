@@ -39,14 +39,19 @@ import WeeklyLogs from "./pages/projects/WeeklyLogs";
 // CONTRACTORS
 import ContractorsList from "./pages/contractors/ContractorsList";
 import AddContractor from "./pages/contractors/AddContractor";
+import ContractorDetails from "./pages/contractors/ContractorDetails";
 
 // ENGINEERS
 import EngineersList from "./pages/engineers/EngineersList";
 import AddEngineer from "./pages/engineers/AddEngineer";
+import EngineerDetails from "./pages/engineers/EngineerDetails";
 
 // CHAIRPERSONS
 import ChairpersonsList from "./pages/chairpersons/ChairpersonsList";
 import AddChairperson from "./pages/chairpersons/AddChairperson";
+
+// PAST PROJECT RECORDS
+import PastProjectRecords from "./pages/projects/PastProjectRecords";
 
 // DELAY LOGS
 import DelayLogs from "./pages/delay/DelayLogs";
@@ -55,10 +60,8 @@ function AppLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
-
       <div className="flex-1 flex flex-col">
         <Topbar />
-
         <main className="p-6 overflow-y-auto flex-1">
           <Outlet />
         </main>
@@ -109,19 +112,26 @@ export default function App() {
               <Route path="weekly-logs" element={<WeeklyLogs />} />
             </Route>
 
-            {/* Legacy Logs Routes (keeping for backward compatibility) */}
+            {/* Legacy Logs Routes */}
             <Route path="projects/:projectId/logs" element={<ProjectLogs />} />
 
             {/* Delay Logs */}
             <Route path="delay-logs/:projectId" element={<DelayLogs />} />
 
-            {/* Contractors */}
+            {/* Contractors — /add must come before /:id routes */}
             <Route path="contractors" element={<ContractorsList />} />
             <Route path="contractors/add" element={<AddContractor />} />
+            <Route path="contractors/:id/view" element={<ContractorDetails />} />
+            <Route path="contractors/:id/edit" element={<AddContractor />} />
 
-            {/* Engineers */}
+            {/* Engineers — /add must come before /:id routes */}
             <Route path="engineers" element={<EngineersList />} />
             <Route path="engineers/add" element={<AddEngineer />} />
+            <Route path="engineers/:id/view" element={<EngineerDetails />} />
+            <Route path="engineers/:id/edit" element={<AddEngineer />} />
+
+            {/* Past Project Records */}
+            <Route path="past-records" element={<PastProjectRecords />} />
 
             {/* Chairpersons */}
             <Route path="chairpersons" element={<ChairpersonsList />} />
