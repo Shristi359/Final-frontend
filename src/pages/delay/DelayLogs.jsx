@@ -16,7 +16,12 @@ export default function DelayLogs() {
   const [editingLog, setEditingLog] = useState(null);
 
   useEffect(() => {
-    if (projectId) fetchAll();
+    // Guard: redirect if projectId is not a valid number
+    if (!projectId || isNaN(projectId)) {
+      navigate("/app/projects/delayed", { replace: true });
+      return;
+    }
+    fetchAll();
   }, [projectId]);
 
   const fetchAll = async () => {
@@ -84,7 +89,6 @@ export default function DelayLogs() {
 
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -191,20 +195,18 @@ export default function DelayLogs() {
   );
 }
 
-/* ---- MODAL ---- */
-
 function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editingLog, onClose, onSaved }) {
   const isEdit = Boolean(editingLog);
 
   const [formData, setFormData] = useState({
-    log_date:          editingLog?.log_date          || "",
-    delay_type:        editingLog?.delay_type        || "",
-    estimated_days:    editingLog?.estimated_days    || "",
-    progress_percent:  editingLog?.progress_percent  || "",
-    delay_description: editingLog?.delay_description || "",
-    actions_taken:     editingLog?.actions_taken     || "",
-    impact_on_schedule:editingLog?.impact_on_schedule|| "",
-    status:            editingLog?.status            || "ONGOING",
+    log_date:           editingLog?.log_date           || "",
+    delay_type:         editingLog?.delay_type         || "",
+    estimated_days:     editingLog?.estimated_days     || "",
+    progress_percent:   editingLog?.progress_percent   || "",
+    delay_description:  editingLog?.delay_description  || "",
+    actions_taken:      editingLog?.actions_taken      || "",
+    impact_on_schedule: editingLog?.impact_on_schedule || "",
+    status:             editingLog?.status             || "ONGOING",
   });
 
   const [loading, setLoading] = useState(false);
@@ -225,8 +227,8 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
       reported_by:        currentUser?.id || null,
       log_date:           formData.log_date,
       delay_type:         parseInt(formData.delay_type),
-      estimated_days:     formData.estimated_days     ? parseInt(formData.estimated_days)    : null,
-      progress_percent:   formData.progress_percent   ? parseFloat(formData.progress_percent): null,
+      estimated_days:     formData.estimated_days    ? parseInt(formData.estimated_days)     : null,
+      progress_percent:   formData.progress_percent  ? parseFloat(formData.progress_percent) : null,
       delay_description:  formData.delay_description,
       actions_taken:      formData.actions_taken,
       impact_on_schedule: formData.impact_on_schedule || "",
@@ -234,12 +236,9 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
     };
 
     try {
-      let res;
-      if (isEdit) {
-        res = await delayLogsAPI.update(editingLog.id, payload);
-      } else {
-        res = await delayLogsAPI.create(payload);
-      }
+      const res = isEdit
+        ? await delayLogsAPI.update(editingLog.id, payload)
+        : await delayLogsAPI.create(payload);
       onSaved(res.data, isEdit);
     } catch (err) {
       console.error("Error saving delay log:", err);
@@ -257,8 +256,6 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
   return (
     <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 px-4">
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-
-        {/* Modal Header */}
         <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
             <AlertTriangle className="text-red-500" size={22} />
@@ -267,9 +264,7 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
               {projectName && <span className="text-gray-500 font-normal"> — {projectName}</span>}
             </h2>
           </div>
-          <button onClick={onClose} className="hover:bg-gray-100 p-1 rounded">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="hover:bg-gray-100 p-1 rounded"><X size={20} /></button>
         </div>
 
         <div className="bg-red-50 border-l-4 border-red-500 p-4 text-sm text-red-700">
@@ -283,17 +278,14 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
         )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <ModalInput label="Log Date *"    type="date"   name="log_date"       value={formData.log_date}       onChange={handleChange} required />
+          <ModalInput label="Log Date *" type="date" name="log_date" value={formData.log_date} onChange={handleChange} required />
 
-          {/* Delay Type from lookup */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Delay Type *</label>
             <select name="delay_type" value={formData.delay_type} onChange={handleChange} required
               className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">Select Delay Type</option>
-              {delayTypes.map(dt => (
-                <option key={dt.id} value={dt.id}>{dt.name}</option>
-              ))}
+              {delayTypes.map(dt => <option key={dt.id} value={dt.id}>{dt.name}</option>)}
             </select>
           </div>
 
@@ -303,7 +295,6 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
           <ModalTextarea label="Actions Taken *"      name="actions_taken"      value={formData.actions_taken}      onChange={handleChange} placeholder="Describe corrective actions..." required />
           <ModalTextarea label="Impact on Schedule"   name="impact_on_schedule" value={formData.impact_on_schedule} onChange={handleChange} placeholder="Describe schedule impact..." />
 
-          {/* Status */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Status</label>
             <select name="status" value={formData.status} onChange={handleChange}
@@ -330,8 +321,6 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
     </div>
   );
 }
-
-/* ---- HELPERS ---- */
 
 function StatCard({ label, value, color }) {
   return (

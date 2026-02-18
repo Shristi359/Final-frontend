@@ -76,10 +76,22 @@ export default function WeeklyLogs() {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+
+    if (name === "milestone") {
+      // When the milestone changes, pre-populate the completion checkbox
+      // based on the milestone's CURRENT is_completed state (master truth).
+      const picked = milestones.find(m => m.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        milestone: value,
+        is_milestone_completed: picked ? picked.is_completed : false,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
     setFormError(null);
   };
 
@@ -88,7 +100,6 @@ export default function WeeklyLogs() {
     if (file) {
       setFormData(prev => ({ ...prev, log_photo: file }));
       
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -233,10 +244,18 @@ export default function WeeklyLogs() {
     return milestone ? milestone.milestone_name : 'N/A';
   };
 
+  const getMilestoneWeight = (milestoneId) => {
+    const milestone = milestones.find(m => m.id === milestoneId);
+    return milestone ? parseFloat(milestone.weight) : null;
+  };
+
   const getEngineerName = (engineerId) => {
     const engineer = engineers.find(e => e.id === engineerId);
     return engineer?.account?.full_name || 'N/A';
   };
+
+  // Derive the selected milestone object while the form is open
+  const selectedMilestone = milestones.find(m => m.id === Number(formData.milestone));
 
   if (loading) {
     return (
@@ -318,7 +337,7 @@ export default function WeeklyLogs() {
                     <option value="">Select Milestone</option>
                     {milestones.map(m => (
                       <option key={m.id} value={m.id}>
-                        {m.milestone_order}. {m.milestone_name}
+                        {m.milestone_order}. {m.milestone_name} ({parseFloat(m.weight).toFixed(1)}%)
                       </option>
                     ))}
                   </select>
@@ -455,19 +474,59 @@ export default function WeeklyLogs() {
                   </select>
                 </div>
 
-                <div className="flex items-center pt-7">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="is_milestone_completed"
-                      checked={formData.is_milestone_completed}
-                      onChange={handleInputChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Milestone Completed
-                    </span>
-                  </label>
+                {/* ── Dynamic milestone completion checkbox ── */}
+                <div className="flex items-start pt-6">
+                  {(() => {
+                    // Already completed from Project Overview (not via this log)
+                    const alreadyDoneElsewhere =
+                      selectedMilestone?.is_completed && !formData.is_milestone_completed;
+
+                    return (
+                      <label className={`flex items-start gap-3 rounded-lg border p-3 w-full transition-colors ${
+                        selectedMilestone?.is_completed
+                          ? "bg-green-50 border-green-300"
+                          : "bg-gray-50 border-gray-200 hover:border-blue-300"
+                      } ${!selectedMilestone ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          name="is_milestone_completed"
+                          checked={formData.is_milestone_completed}
+                          onChange={handleInputChange}
+                          // Disable unchecking if milestone was already completed from Overview
+                          // — only Overview can unmark it
+                          disabled={!selectedMilestone || alreadyDoneElsewhere}
+                          className="mt-0.5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          {selectedMilestone ? (
+                            <>
+                              <p className="text-sm font-medium text-gray-800 leading-snug">
+                                Is <span className="text-blue-700 font-semibold">"{selectedMilestone.milestone_name}"</span> completed?
+                              </p>
+                              {alreadyDoneElsewhere ? (
+                                <p className="text-xs text-green-600 mt-0.5">
+                                  ✓ Already marked complete in Project Overview. To unmark, use the milestone toggle there.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  Checking this will add{" "}
+                                  <strong className="text-green-700">
+                                    {parseFloat(selectedMilestone.weight).toFixed(1)}%
+                                  </strong>{" "}
+                                  to overall project progress.
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-400 italic">Select a milestone first</p>
+                          )}
+                        </div>
+                        {selectedMilestone?.is_completed && (
+                          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        )}
+                      </label>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -570,11 +629,16 @@ export default function WeeklyLogs() {
                       <span className="text-sm font-medium text-blue-700">
                         {getMilestoneName(log.milestone)}
                       </span>
+                      {getMilestoneWeight(log.milestone) && (
+                        <span className="text-xs text-blue-400">
+                          {getMilestoneWeight(log.milestone).toFixed(1)}%
+                        </span>
+                      )}
                     </div>
                     {log.is_milestone_completed && (
                       <div className="flex items-center gap-1 px-3 py-1 bg-green-50 rounded-full">
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-700">Completed</span>
+                        <span className="text-sm font-medium text-green-700">Milestone Completed</span>
                       </div>
                     )}
                   </div>
@@ -659,7 +723,6 @@ export default function WeeklyLogs() {
   );
 }
 
-// Helper function to get CSRF token
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -675,7 +738,6 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// Reusable Info Item Component
 function InfoItem({ icon: Icon, label, value }) {
   return (
     <div>

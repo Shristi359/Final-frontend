@@ -1,576 +1,557 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, Loader2, X } from "lucide-react";
+import api from "../../api/axios";
 
+// ─── API helpers ─────────────────────────────────────────────────────────────
+const measurementAPI = {
+  list:   (pid)     => api.get(`finance/measurement-book/?project=${pid}`),
+  create: (data)    => api.post(`finance/measurement-book/`, data),
+  update: (id, data)=> api.put(`finance/measurement-book/${id}/`, data),
+  delete: (id)      => api.delete(`finance/measurement-book/${id}/`),
+};
+
+const fmt = (n) =>
+  new Intl.NumberFormat('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
+
+const STATUS_COLOR = {
+  VERIFIED: "bg-green-100 text-green-800",
+  PENDING:  "bg-yellow-100 text-yellow-800",
+  DRAFT:    "bg-gray-100 text-gray-800",
+};
+const CAT_COLOR = {
+  EARTHWORK: "bg-orange-100 text-orange-800",
+  PAVEMENT:  "bg-purple-100 text-purple-800",
+  CONCRETE:  "bg-blue-100 text-blue-800",
+  DRAINAGE:  "bg-cyan-100 text-cyan-800",
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function ProjectMeasurement() {
   const { projectId } = useParams();
-  
-  const [showForm, setShowForm] = useState(false);
   const [measurements, setMeasurements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [showForm, setShowForm]         = useState(false);
+  const [editing, setEditing]           = useState(null);
+  const [viewing, setViewing]           = useState(null);
+  const [filter, setFilter]             = useState("ALL");
 
-  const [stats, setStats] = useState({
-    totalRecords: 0,
-    verified: 0,
-    pending: 0,
-    draft: 0
-  });
+  useEffect(() => { load(); }, [projectId]);
 
-  useEffect(() => {
-    fetchMeasurements();
-  }, [projectId]);
-
-  const fetchMeasurements = async () => {
+  const load = async () => {
     try {
-      // Mock data - replace with actual API call when backend is ready
-      const mockData = [
-        {
-          id: "MB-2024-015",
-          date: "2024-07-15",
-          description: "Excavation of footpath",
-          category: "EARTHWORK",
-          quantity: 2.500,
-          unit: "m³",
-          status: "VERIFIED"
-        },
-        {
-          id: "MB-2024-016",
-          date: "2024-07-16",
-          description: "Granular Sub-base Material",
-          category: "EARTHWORK",
-          quantity: 1.900,
-          unit: "m³",
-          status: "VERIFIED"
-        },
-        {
-          id: "MB-2024-017",
-          date: "2024-07-22",
-          description: "Base Course Layer (150mm)",
-          category: "PAVEMENT",
-          quantity: 4.000,
-          unit: "m³",
-          status: "VERIFIED"
-        },
-        {
-          id: "MB-2024-018",
-          date: "2024-07-01",
-          description: "Concrete for Drainage Culvert",
-          category: "CONCRETE",
-          quantity: 55,
-          unit: "m³",
-          status: "PENDING"
-        }
-      ];
-
-      setTimeout(() => {
-        setMeasurements(mockData);
-        
-        setStats({
-          totalRecords: mockData.length,
-          verified: mockData.filter(m => m.status === "VERIFIED").length,
-          pending: mockData.filter(m => m.status === "PENDING").length,
-          draft: mockData.filter(m => m.status === "DRAFT").length
-        });
-        
-        setLoading(false);
-      }, 300);
-    } catch (error) {
-      console.error("Error fetching measurements:", error);
+      setLoading(true);
+      const res = await measurementAPI.list(projectId);
+      setMeasurements(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleAddNew = () => {
-    setEditingId(null);
-    setShowForm(true);
-  };
-
-  const handleEdit = (measurement) => {
-    setEditingId(measurement.id);
-    setShowForm(true);
-  };
-
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this measurement?")) {
-      try {
-        setMeasurements(measurements.filter(m => m.id !== id));
-        alert("Measurement deleted successfully!");
-      } catch (error) {
-        console.error("Error deleting measurement:", error);
-        alert("Failed to delete measurement.");
+    if (!window.confirm("Delete this measurement book?")) return;
+    try {
+      await measurementAPI.delete(id);
+      setMeasurements(prev => prev.filter(m => m.id !== id));
+    } catch { alert("Failed to delete."); }
+  };
+
+  const handleSave = async (payload) => {
+    try {
+      if (editing) {
+        await measurementAPI.update(editing.id, payload);
+      } else {
+        await measurementAPI.create(payload);
       }
+      await load();
+      setShowForm(false);
+      setEditing(null);
+    } catch (e) {
+      const errData = e.response?.data;
+      console.error("Save failed:", errData);
+      // Re-throw so MeasurementForm can display it inline
+      throw e;
     }
   };
 
-  const handleFormSubmit = (newMeasurement) => {
-    if (editingId) {
-      setMeasurements(measurements.map(m => 
-        m.id === editingId ? { ...newMeasurement, id: editingId } : m
-      ));
-    } else {
-      setMeasurements([...measurements, { ...newMeasurement, id: `MB-2024-${Date.now()}` }]);
-    }
-    setShowForm(false);
-    setEditingId(null);
+  const filtered = filter === "ALL" ? measurements : measurements.filter(m => m.status === filter);
+
+  const counts = {
+    total:         measurements.length,
+    verified:      measurements.filter(m => m.status === "VERIFIED").length,
+    pending:       measurements.filter(m => m.status === "PENDING").length,
+    draft:         measurements.filter(m => m.status === "DRAFT").length,
+    totalAmount:   measurements.reduce((s, m) => s + (Number(m.total_amount) || 0), 0),
+    verifiedAmount: measurements
+      .filter(m => m.status === "VERIFIED")
+      .reduce((s, m) => s + (Number(m.total_amount) || 0), 0),
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingId(null);
-  };
+  if (showForm) return (
+    <MeasurementForm
+      projectId={projectId}
+      initial={editing}
+      onSave={handleSave}
+      onCancel={() => { setShowForm(false); setEditing(null); }}
+    />
+  );
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "VERIFIED":
-        return "bg-green-100 text-green-800";
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "DRAFT":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  if (viewing) return (
+    <MeasurementView item={viewing} onClose={() => setViewing(null)} />
+  );
 
-  const getCategoryColor = (category) => {
-    switch (category) {
-      case "EARTHWORK":
-        return "bg-orange-100 text-orange-800";
-      case "PAVEMENT":
-        return "bg-purple-100 text-purple-800";
-      case "CONCRETE":
-        return "bg-blue-100 text-blue-800";
-      case "DRAINAGE":
-        return "bg-cyan-100 text-cyan-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  if (showForm) {
-    return (
-      <MeasurementForm
-        projectId={projectId}
-        editingId={editingId}
-        existingData={editingId ? measurements.find(m => m.id === editingId) : null}
-        onSubmit={handleFormSubmit}
-        onCancel={handleCancel}
-      />
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading measurements...</div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex justify-center items-center h-40">
+      <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">Measurement Book</h3>
+        <h3 className="text-xl font-semibold text-gray-800">Measurement Book</h3>
         <button
-          onClick={handleAddNew}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2"
+          onClick={() => { setEditing(null); setShowForm(true); }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm"
         >
-          <Plus className="w-4 h-4" />
-          New Entry
+          <Plus className="w-4 h-4" /> New Entry
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">TOTAL RECORDS</p>
-          <p className="text-2xl font-bold">{stats.totalRecords}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">VERIFIED</p>
-          <p className="text-2xl font-bold text-green-600">{stats.verified}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">PENDING REVIEW</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">DRAFT</p>
-          <p className="text-2xl font-bold text-gray-600">{stats.draft}</p>
-        </div>
+      {/* Stats — 6 cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[
+          { label: "TOTAL RECORDS",    val: counts.total,                            cls: "text-gray-800",  isAmount: false },
+          { label: "VERIFIED",         val: counts.verified,                         cls: "text-green-600", isAmount: false },
+          { label: "PENDING",          val: counts.pending,                          cls: "text-yellow-600",isAmount: false },
+          { label: "DRAFT",            val: counts.draft,                            cls: "text-gray-500",  isAmount: false },
+          { label: "TOTAL AMOUNT",     val: "NPR " + fmt(counts.totalAmount),        cls: "text-blue-600",  isAmount: true  },
+          { label: "VERIFIED AMOUNT",  val: "NPR " + fmt(counts.verifiedAmount),     cls: "text-green-700", isAmount: true  },
+        ].map(s => (
+          <div key={s.label} className="bg-white p-4 rounded-lg shadow">
+            <p className="text-xs text-gray-500 mb-1">{s.label}</p>
+            <p className={`font-bold ${s.cls} ${s.isAmount ? "text-sm" : "text-2xl"}`}>{s.val}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Filter Buttons */}
-      <div className="flex gap-3">
-        <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          All
-        </button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-          Verified
-        </button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-          Pending
-        </button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-          Draft
-        </button>
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        {["ALL", "VERIFIED", "PENDING", "DRAFT"].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded text-sm font-medium transition ${
+              filter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}>
+            {f}
+          </button>
+        ))}
       </div>
 
-      {/* Measurements Table */}
+      {/* Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  MB Number
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Unit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {measurements.map((measurement) => (
-                <tr key={measurement.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {measurement.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {measurement.date}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {measurement.description}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getCategoryColor(measurement.category)}`}>
-                      {measurement.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {measurement.quantity}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {measurement.unit}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(measurement.status)}`}>
-                      {measurement.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(measurement)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        className="text-gray-600 hover:text-gray-800"
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(measurement.id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              {["MB No.", "Date", "Category", "Items", "Total Amount", "Status", "Actions"].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                  No measurement records. Click "New Entry" to add one.
+                </td>
+              </tr>
+            ) : filtered.map(m => (
+              <tr key={m.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                  MB-{String(m.id).padStart(4, '0')}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{m.date}</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-1 text-xs rounded font-medium ${CAT_COLOR[m.category] || "bg-gray-100 text-gray-800"}`}>
+                    {m.category}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{m.items?.length || 0} items</td>
+                <td className="px-4 py-3 text-sm font-semibold text-blue-700">
+                  NPR {fmt(m.total_amount)}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-1 text-xs rounded font-medium ${STATUS_COLOR[m.status] || "bg-gray-100 text-gray-800"}`}>
+                    {m.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button onClick={() => setViewing(m)} title="View"
+                      className="text-gray-500 hover:text-gray-800 p-1 rounded hover:bg-gray-100">
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => { setEditing(m); setShowForm(true); }} title="Edit"
+                      className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(m.id)} title="Delete"
+                      className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          {/* Table footer — sum of currently filtered rows */}
+          {filtered.length > 0 && (
+            <tfoot>
+              <tr className="bg-blue-50 border-t-2 border-blue-200">
+                <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">
+                  {filter === "ALL" ? "Total" : `${filter} Total`}
+                </td>
+                <td className="px-4 py-2 text-sm font-bold text-blue-700">
+                  NPR {fmt(filtered.reduce((s, m) => s + (Number(m.total_amount) || 0), 0))}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </div>
     </div>
   );
 }
 
-// Measurement Form Component
-function MeasurementForm({ projectId, editingId, existingData, onSubmit, onCancel }) {
-  const [entries, setEntries] = useState([
-    {
-      id: 1,
-      description: "",
-      nos: "",
-      length: "",
-      breadth: "",
-      height: "",
-      quantity: 0,
-      unit: "Unit",
-      rate: "",
-      amount: 0
-    }
-  ]);
+// ─── View details ─────────────────────────────────────────────────────────────
+function MeasurementView({ item, onClose }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-semibold">MB-{String(item.id).padStart(4, '0')} — Details</h3>
+        <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+      </div>
+      <div className="bg-white rounded-lg shadow p-6 space-y-4">
+        <div className="grid grid-cols-3 gap-4 text-sm border-b pb-4">
+          <div><p className="text-gray-500">Date</p><p className="font-medium">{item.date}</p></div>
+          <div><p className="text-gray-500">Category</p><p className="font-medium">{item.category}</p></div>
+          <div><p className="text-gray-500">Status</p><p className="font-medium">{item.status}</p></div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                {["#", "Description", "Nos", "L", "B", "H", "Qty", "Unit", "Rate", "Amount"].map(h => (
+                  <th key={h} className="px-3 py-2 text-left border font-medium text-gray-600">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(item.items || []).map((it, i) => (
+                <tr key={i} className="border-b hover:bg-gray-50">
+                  <td className="px-3 py-2 border">{i + 1}</td>
+                  <td className="px-3 py-2 border">{it.description}</td>
+                  <td className="px-3 py-2 border">{it.nos}</td>
+                  <td className="px-3 py-2 border">{it.length}</td>
+                  <td className="px-3 py-2 border">{it.breadth}</td>
+                  <td className="px-3 py-2 border">{it.height}</td>
+                  <td className="px-3 py-2 border">{it.quantity}</td>
+                  <td className="px-3 py-2 border">{it.unit}</td>
+                  <td className="px-3 py-2 border">{fmt(it.rate)}</td>
+                  <td className="px-3 py-2 border font-semibold text-blue-700">{fmt(it.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-blue-50 font-bold">
+                <td colSpan={9} className="px-3 py-2 border text-right">Total Amount</td>
+                <td className="px-3 py-2 border text-blue-700">NPR {fmt(item.total_amount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={onClose} className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Close</button>
+      </div>
+    </div>
+  );
+}
 
-  const [formData, setFormData] = useState({
-    date: existingData?.date || "",
-    category: existingData?.category || "",
-    status: existingData?.status || "DRAFT"
+// ─── Form ─────────────────────────────────────────────────────────────────────
+function MeasurementForm({ projectId, initial, onSave, onCancel }) {
+  const [header, setHeader] = useState({
+    date:     initial?.date     || "",
+    category: initial?.category || "",
+    status:   initial?.status   || "DRAFT",
   });
+  const [saveError, setSaveError] = useState(null);
+  const [saving,    setSaving]    = useState(false);
 
-  const [subtotal, setSubtotal] = useState(0);
-  const [vat, setVat] = useState(0);
-  const [grandTotal, setGrandTotal] = useState(0);
+  // Fetch budget context to enforce cap
+  const [estimatedBudget, setEstimatedBudget] = useState(0);
+  const [currentUsed,     setCurrentUsed]     = useState(0);
 
   useEffect(() => {
-    calculateTotals();
-  }, [entries]);
-
-  const calculateTotals = () => {
-    const sub = entries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
-    const vatAmount = sub * 0.13;
-    const grand = sub + vatAmount;
-    
-    setSubtotal(sub);
-    setVat(vatAmount);
-    setGrandTotal(grand);
-  };
-
-  const handleEntryChange = (id, field, value) => {
-    setEntries(entries.map(entry => {
-      if (entry.id === id) {
-        const updated = { ...entry };
-        updated[field] = value;
-        
-        const nos = field === 'nos' ? (parseFloat(value) || 0) : (parseFloat(entry.nos) || 0);
-        const length = field === 'length' ? (parseFloat(value) || 0) : (parseFloat(entry.length) || 0);
-        const breadth = field === 'breadth' ? (parseFloat(value) || 0) : (parseFloat(entry.breadth) || 0);
-        const height = field === 'height' ? (parseFloat(value) || 0) : (parseFloat(entry.height) || 0);
-        const rate = field === 'rate' ? (parseFloat(value) || 0) : (parseFloat(entry.rate) || 0);
-        
-        const qty = nos * length * breadth * height;
-        updated.quantity = qty;
-        updated.amount = qty * rate;
-        
-        return updated;
+    const fetchBudget = async () => {
+      try {
+        const [absRes, mbRes, matRes] = await Promise.allSettled([
+          api.get(`finance/abstract-record/?project=${projectId}`),
+          api.get(`finance/measurement-book/?project=${projectId}`),
+          api.get(`finance/materials/?project=${projectId}`),
+        ]);
+        if (absRes.status === "fulfilled") {
+          const approved = (absRes.value.data || []).filter(a => a.status === "APPROVED");
+          setEstimatedBudget(approved.reduce((s, a) => s + (Number(a.grand_total) || 0), 0));
+        }
+        if (mbRes.status === "fulfilled" && matRes.status === "fulfilled") {
+          const verifiedMB  = (mbRes.value.data  || [])
+            .filter(m => m.status === "VERIFIED" && m.id !== initial?.id)
+            .reduce((s, m) => s + (Number(m.total_amount) || 0), 0);
+          const deliveredMat = (matRes.value.data || [])
+            .filter(m => m.status === "DELIVERED")
+            .reduce((s, m) => s + (Number(m.grand_total) || 0), 0);
+          setCurrentUsed(verifiedMB + deliveredMat);
+        }
+      } catch (e) {
+        console.warn("Could not fetch budget context:", e);
       }
-      return entry;
+    };
+    fetchBudget();
+  }, [projectId, initial?.id]);
+
+  const newRow = () => ({
+    _key: Date.now() + Math.random(),
+    description: "", nos: "1",
+    length: "", breadth: "", height: "",
+    quantity: 0, unit: "m³", rate: "", amount: 0,
+  });
+
+  const [rows, setRows] = useState(
+    initial?.items?.length
+      ? initial.items.map(r => ({ ...r, _key: r.id }))
+      : [newRow()]
+  );
+
+  const updateRow = (key, field, val) => {
+    setRows(prev => prev.map(r => {
+      if (r._key !== key) return r;
+      const u = { ...r, [field]: val };
+      const nos = parseFloat(field === 'nos'     ? val : r.nos)     || 1;
+      const l   = parseFloat(field === 'length'  ? val : r.length)  || 0;
+      const b   = parseFloat(field === 'breadth' ? val : r.breadth) || 0;
+      const h   = parseFloat(field === 'height'  ? val : r.height)  || 0;
+      const rt  = parseFloat(field === 'rate'    ? val : r.rate)    || 0;
+      let qty = nos;
+      if (l) qty *= l;
+      if (b) qty *= b;
+      if (h) qty *= h;
+      u.quantity = parseFloat(qty.toFixed(4));
+      u.amount   = parseFloat((qty * rt).toFixed(2));
+      return u;
     }));
   };
 
-  const addEntry = () => {
-    setEntries([...entries, {
-      id: entries.length + 1,
-      description: "",
-      nos: "",
-      length: "",
-      breadth: "",
-      height: "",
-      quantity: 0,
-      unit: "Unit",
-      rate: "",
-      amount: 0
-    }]);
-  };
+  const subtotal = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-  const removeEntry = (id) => {
-    if (entries.length > 1) {
-      setEntries(entries.filter(entry => entry.id !== id));
+  // Budget cap check: if status=VERIFIED, would this push used over estimate?
+  const wouldExceedBudget = () => {
+    if (estimatedBudget <= 0) return false; // no estimate set — allow
+    if (header.status !== "VERIFIED") return false; // only block on VERIFIED
+    const projectedUsed = currentUsed + subtotal;
+    return projectedUsed > estimatedBudget;
+  };
+  const budgetOverage = estimatedBudget > 0
+    ? (currentUsed + subtotal) - estimatedBudget
+    : 0;
+  const remainingBudget = estimatedBudget - currentUsed;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaveError(null);
+    if (!header.date || !header.category) {
+      setSaveError("Date and Category are required.");
+      return;
+    }
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r.description || !r.description.trim()) {
+        setSaveError(`Row ${i + 1}: Description is required.`);
+        return;
+      }
+      if (!r.rate || parseFloat(r.rate) <= 0) {
+        setSaveError(`Row ${i + 1}: Rate must be greater than 0.`);
+        return;
+      }
+    }
+    // ── Budget cap enforcement ─────────────────────────────────────────────────
+    if (wouldExceedBudget()) {
+      setSaveError(
+        `Cannot set status to VERIFIED — this entry (NPR ${fmt(subtotal)}) would exceed the approved estimate.\n` +
+        `Remaining budget: NPR ${fmt(remainingBudget)} · Over by: NPR ${fmt(budgetOverage)}.\n` +
+        `Save as DRAFT or PENDING instead, or increase the approved Abstract estimate first.`
+      );
+      return;
+    }
+    const payload = {
+      project:  parseInt(projectId),
+      date:     header.date,
+      category: header.category,
+      status:   header.status,
+      items: rows.map(({ _key, id, ...r }) => ({
+        description: r.description.trim(),
+        nos:      parseInt(r.nos)          || 1,
+        length:   parseFloat(r.length)    || 0,
+        breadth:  parseFloat(r.breadth)   || 0,
+        height:   parseFloat(r.height)    || 0,
+        // quantity must be > 0; if no dimensions entered, fall back to nos
+        quantity: parseFloat(r.quantity) > 0 ? parseFloat(r.quantity) : (parseInt(r.nos) || 1),
+        unit:     r.unit                 || "m³",
+        rate:     parseFloat(r.rate)     || 0,
+        amount:   parseFloat(r.amount)   || 0,
+      })),
+    };
+    console.log("Submitting payload:", JSON.stringify(payload, null, 2));
+    try {
+      setSaving(true);
+      await onSave(payload);
+    } catch (e) {
+      const errData = e?.response?.data;
+      if (errData && typeof errData === "object") {
+        const lines = Object.entries(errData).map(([f, v]) => `${f}: ${Array.isArray(v) ? v.join(", ") : v}`);
+        setSaveError(lines.join("\n"));
+      } else {
+        setSaveError(e?.message || "Failed to save.");
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    const description = entries.map(e => e.description).filter(Boolean).join(", ");
-    const totalQuantity = entries.reduce((sum, e) => sum + (e.quantity || 0), 0);
-    
-    const measurementData = {
-      date: formData.date,
-      description: description || "Measurement Entry",
-      category: formData.category,
-      quantity: totalQuantity,
-      unit: entries[0]?.unit || "m³",
-      status: formData.status
-    };
-    
-    onSubmit(measurementData);
-  };
+  const numCell = (key, field, ph, w = "w-16") => (
+    <input type="number" step="any" placeholder={ph}
+      value={rows.find(r => r._key === key)?.[field] ?? ""}
+      onChange={e => updateRow(key, field, e.target.value)}
+      className={`${w} px-1 py-1 text-sm rounded focus:ring-1 focus:ring-blue-400 border-0`}
+    />
+  );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold">
-          {editingId ? "Edit Measurement" : "New Measurement Entry"}
-        </h3>
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-          <p className="text-sm text-yellow-800">
-            <strong>Note:</strong> Fill in the measurement details below.
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-semibold">{initial ? "Edit" : "New"} Measurement Entry</h3>
+        <button onClick={onCancel} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
-        {/* Form Header */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+            <input type="date" required value={header.date}
+              onChange={e => setHeader(p => ({ ...p, date: e.target.value }))}
+              className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select Category</option>
-              <option value="EARTHWORK">Earthwork</option>
-              <option value="PAVEMENT">Pavement</option>
-              <option value="CONCRETE">Concrete</option>
-              <option value="DRAINAGE">Drainage</option>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+            <select required value={header.category}
+              onChange={e => setHeader(p => ({ ...p, category: e.target.value }))}
+              className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="">Select category</option>
+              {["EARTHWORK", "PAVEMENT", "CONCRETE", "DRAINAGE"].map(c =>
+                <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>
+              )}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="DRAFT">Draft</option>
-              <option value="PENDING">Pending</option>
-              <option value="VERIFIED">Verified</option>
+            <select value={header.status}
+              onChange={e => setHeader(p => ({ ...p, status: e.target.value }))}
+              className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+              {["DRAFT", "PENDING", "VERIFIED"].map(s =>
+                <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+              )}
             </select>
           </div>
         </div>
 
-        {/* Measurement Entries Table */}
+        {/* ── Live Budget Status ── */}
+        {estimatedBudget > 0 && (
+          <div className={`rounded-lg border p-3 ${
+            wouldExceedBudget()
+              ? "bg-red-50 border-red-300"
+              : (currentUsed + subtotal) > estimatedBudget * 0.8
+              ? "bg-yellow-50 border-yellow-300"
+              : "bg-green-50 border-green-200"
+          }`}>
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="font-medium text-gray-700">Budget Status</span>
+              <span className={`font-bold ${wouldExceedBudget() ? "text-red-600" : "text-green-700"}`}>
+                {wouldExceedBudget()
+                  ? `⛔ Would exceed by NPR ${fmt(budgetOverage)}`
+                  : `NPR ${fmt(Math.max(0, remainingBudget - subtotal))} remaining after save`}
+              </span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden flex">
+              <div className="bg-blue-500 h-full transition-all"
+                style={{ width: `${Math.min((currentUsed / estimatedBudget) * 100, 100)}%` }} />
+              <div className={`h-full transition-all ${wouldExceedBudget() ? "bg-red-500" : "bg-blue-300"}`}
+                style={{ width: `${Math.min((subtotal / estimatedBudget) * 100, Math.max(0, 100 - (currentUsed / estimatedBudget) * 100))}%` }} />
+            </div>
+            <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+              <span>Already used: NPR {fmt(currentUsed)} · This entry: NPR {fmt(subtotal)}</span>
+              <span>Approved estimate: NPR {fmt(estimatedBudget)}</span>
+            </div>
+            {wouldExceedBudget() && header.status === "VERIFIED" && (
+              <p className="text-xs text-red-600 font-semibold mt-1.5">
+                ⚠ Cannot verify — change status to DRAFT or PENDING, or reduce amounts.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="overflow-x-auto">
-          <table className="w-full border">
+          <table className="w-full border text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">E.</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">DESCRIPTION</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">NOS</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">LENGTH</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">BREADTH</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">HEIGHT</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">QUANTITY</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">UNIT</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">RATE</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">AMOUNT</th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border">ACTION</th>
+                {["#", "Description", "Nos", "Length", "Breadth", "Height", "Qty (auto)", "Unit", "Rate (NPR)", "Amount (NPR)", ""].map(h => (
+                  <th key={h} className="px-2 py-2 text-left border text-xs font-medium text-gray-600">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="px-2 py-2 border text-sm">{entry.id}</td>
+              {rows.map((row, idx) => (
+                <tr key={row._key} className="hover:bg-gray-50">
+                  <td className="px-2 py-2 border text-center text-gray-500 text-xs">{idx + 1}</td>
                   <td className="px-2 py-2 border">
-                    <input
-                      type="text"
-                      value={entry.description}
-                      onChange={(e) => handleEntryChange(entry.id, 'description', e.target.value)}
-                      placeholder="Description"
-                      className="w-full px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
+                    <input type="text" placeholder="Description" value={row.description}
+                      onChange={e => updateRow(row._key, 'description', e.target.value)}
+                      className="w-40 px-2 py-1 text-sm rounded focus:ring-1 focus:ring-blue-400 border-0" />
+                  </td>
+                  <td className="px-2 py-2 border">{numCell(row._key, 'nos',     '1',    'w-12')}</td>
+                  <td className="px-2 py-2 border">{numCell(row._key, 'length',  '0.00', 'w-16')}</td>
+                  <td className="px-2 py-2 border">{numCell(row._key, 'breadth', '0.00', 'w-16')}</td>
+                  <td className="px-2 py-2 border">{numCell(row._key, 'height',  '0.00', 'w-16')}</td>
+                  <td className="px-2 py-2 border bg-gray-50 text-sm font-medium text-gray-700">
+                    {Number(row.quantity).toFixed(3)}
                   </td>
                   <td className="px-2 py-2 border">
-                    <input
-                      type="number"
-                      value={entry.nos}
-                      onChange={(e) => handleEntryChange(entry.id, 'nos', e.target.value)}
-                      placeholder="0"
-                      className="w-16 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
-                  </td>
-                  <td className="px-2 py-2 border">
-                    <input
-                      type="number"
-                      value={entry.length}
-                      onChange={(e) => handleEntryChange(entry.id, 'length', e.target.value)}
-                      placeholder="0.00"
-                      className="w-20 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
-                  </td>
-                  <td className="px-2 py-2 border">
-                    <input
-                      type="number"
-                      value={entry.breadth}
-                      onChange={(e) => handleEntryChange(entry.id, 'breadth', e.target.value)}
-                      placeholder="0.00"
-                      className="w-20 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
-                  </td>
-                  <td className="px-2 py-2 border">
-                    <input
-                      type="number"
-                      value={entry.height}
-                      onChange={(e) => handleEntryChange(entry.id, 'height', e.target.value)}
-                      placeholder="0.00"
-                      className="w-20 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
-                  </td>
-                  <td className="px-2 py-2 border text-sm font-medium">
-                    {entry.quantity.toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2 border">
-                    <select
-                      value={entry.unit}
-                      onChange={(e) => handleEntryChange(entry.id, 'unit', e.target.value)}
-                      className="w-20 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    >
-                      <option>Unit</option>
-                      <option>m³</option>
-                      <option>m²</option>
-                      <option>m</option>
-                      <option>kg</option>
+                    <select value={row.unit} onChange={e => updateRow(row._key, 'unit', e.target.value)}
+                      className="w-16 text-sm border-0 focus:ring-1 focus:ring-blue-400 rounded">
+                      {["m³", "m²", "m", "kg", "nos", "ls"].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </td>
-                  <td className="px-2 py-2 border">
-                    <input
-                      type="number"
-                      value={entry.rate}
-                      onChange={(e) => handleEntryChange(entry.id, 'rate', e.target.value)}
-                      placeholder="0.00"
-                      className="w-24 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
-                  </td>
-                  <td className="px-2 py-2 border text-sm font-medium">
-                    {entry.amount.toFixed(2)}
+                  <td className="px-2 py-2 border">{numCell(row._key, 'rate', '0.00', 'w-24')}</td>
+                  <td className="px-2 py-2 border bg-blue-50 font-semibold text-blue-700 text-sm">
+                    {fmt(row.amount)}
                   </td>
                   <td className="px-2 py-2 border text-center">
-                    <button
-                      type="button"
-                      onClick={() => removeEntry(entry.id)}
-                      className="text-red-600 hover:text-red-800"
-                      disabled={entries.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
+                    <button type="button" disabled={rows.length === 1}
+                      onClick={() => setRows(r => r.filter(x => x._key !== row._key))}
+                      className="text-red-500 hover:text-red-700 disabled:opacity-30">
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>
                 </tr>
@@ -579,46 +560,39 @@ function MeasurementForm({ projectId, editingId, existingData, onSubmit, onCance
           </table>
         </div>
 
-        <button
-          type="button"
-          onClick={addEntry}
-          className="text-blue-600 hover:text-blue-800 flex items-center gap-2 text-sm font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Add Entry
+        <button type="button" onClick={() => setRows(r => [...r, newRow()])}
+          className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+          <Plus className="w-4 h-4" /> Add Row
         </button>
 
-        {/* Totals */}
         <div className="flex justify-end">
-          <div className="w-64 space-y-2">
-            <div className="flex justify-between">
-              <span className="font-medium">Subtotal</span>
-              <span>NPR {subtotal.toFixed(2)}</span>
+          <div className="w-72 border rounded-lg overflow-hidden">
+            <div className="flex justify-between px-4 py-2 text-sm">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium">NPR {fmt(subtotal)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="font-medium">VAT @ 13%</span>
-              <span>NPR {vat.toFixed(2)}</span>
+            <div className="flex justify-between px-4 py-2 text-sm bg-gray-50">
+              <span className="text-gray-600">VAT @ 13%</span>
+              <span className="font-medium">NPR {fmt(subtotal * 0.13)}</span>
             </div>
-            <div className="flex justify-between text-lg font-bold border-t pt-2">
+            <div className="flex justify-between px-4 py-3 text-sm bg-blue-600 text-white font-bold">
               <span>Grand Total</span>
-              <span className="text-blue-600">NPR {grandTotal.toFixed(2)}</span>
+              <span>NPR {fmt(subtotal * 1.13)}</span>
             </div>
           </div>
         </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          {saveError && (
+            <div className="flex-1 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700 whitespace-pre-line">
+              {saveError}
+            </div>
+          )}
+          <button type="button" onClick={onCancel}
+            className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button type="submit" disabled={saving}
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 disabled:opacity-60">
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             Save Measurement
           </button>
         </div>

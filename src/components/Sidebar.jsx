@@ -1,28 +1,58 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Briefcase, FolderKanban,
   Clock, Settings, LogOut, ChevronLeft, ChevronRight,
   Users, HardHat, FileSpreadsheet,
 } from "lucide-react";
-
-const NAV_ITEMS = [
-  { to: "/app/dashboard",      icon: LayoutDashboard,  label: "Dashboard" },
-  { to: "/app/projects",       icon: FolderKanban,     label: "Projects" },
-  { to: "/app/contractors",    icon: Briefcase,        label: "Contractors" },
-  { to: "/app/engineers",      icon: HardHat,          label: "Engineers" },
-  { to: "/app/chairpersons",   icon: Users,            label: "Chairpersons" },
-  { to: "/app/delay-logs",     icon: Clock,            label: "Delay Logs", badge: 3 },
-  { to: "/app/past-records",   icon: FileSpreadsheet,  label: "Past Records" },
-];
-
-const BOTTOM_ITEMS = [
-  { to: "/app/settings", icon: Settings, label: "Settings" },
-];
+import { projectsAPI, delayLogsAPI } from "../api/axios";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [missingDelayLogs, setMissingDelayLogs] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchMissingDelayLogsCount();
+  }, []);
+
+  const fetchMissingDelayLogsCount = async () => {
+    try {
+      const [projectsRes, logsRes] = await Promise.allSettled([
+        projectsAPI.list(),
+        delayLogsAPI.list(),
+      ]);
+
+      if (projectsRes.status !== "fulfilled" || logsRes.status !== "fulfilled") return;
+
+      const delayedProjects = projectsRes.value.data.filter(p => p.status === "DELAYED");
+      const delayLogs       = logsRes.value.data;
+
+      // Get unique project IDs that have submitted at least one delay log
+      const projectsWithLogs = new Set(delayLogs.map(log => log.project));
+
+      // Count delayed projects that have NOT submitted any delay log
+      const missing = delayedProjects.filter(p => !projectsWithLogs.has(p.id)).length;
+
+      setMissingDelayLogs(missing);
+    } catch (err) {
+      console.error("Failed to fetch delay log counts:", err);
+    }
+  };
+
+  const NAV_ITEMS = [
+    { to: "/app/dashboard",        icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/app/projects",         icon: FolderKanban,    label: "Projects" },
+    { to: "/app/contractors",      icon: Briefcase,       label: "Contractors" },
+    { to: "/app/engineers",        icon: HardHat,         label: "Engineers" },
+    { to: "/app/chairpersons",     icon: Users,           label: "Chairpersons" },
+    { to: "/app/projects/delayed", icon: Clock,           label: "Delay Logs", badge: missingDelayLogs },
+    { to: "/app/past-records",     icon: FileSpreadsheet, label: "Past Records" },
+  ];
+
+  const BOTTOM_ITEMS = [
+    { to: "/app/settings", icon: Settings, label: "Settings" },
+  ];
 
   const handleLogout = async () => {
     try {
@@ -51,7 +81,7 @@ export default function Sidebar() {
         )}
         <button
           onClick={() => setCollapsed(v => !v)}
-          className={`w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white ${collapsed ? "" : ""}`}
+          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
         >
           {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
@@ -77,7 +107,6 @@ export default function Sidebar() {
           >
             {({ isActive }) => (
               <>
-                {/* Active indicator bar */}
                 {isActive && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-300 rounded-r-full" />
                 )}
@@ -85,15 +114,14 @@ export default function Sidebar() {
                 {!collapsed && (
                   <>
                     <span className="flex-1 truncate">{label}</span>
-                    {badge && (
+                    {badge > 0 && (
                       <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
                         {badge}
                       </span>
                     )}
                   </>
                 )}
-                {/* Collapsed badge dot */}
-                {collapsed && badge && (
+                {collapsed && badge > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
                 )}
               </>

@@ -1,472 +1,396 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, Loader2, X } from "lucide-react";
+import api from "../../api/axios";
+
+const abstractAPI = {
+  list:   (pid)      => api.get(`finance/abstract-record/?project=${pid}`),
+  create: (data)     => api.post(`finance/abstract-record/`, data),
+  update: (id, data) => api.put(`finance/abstract-record/${id}/`, data),
+  delete: (id)       => api.delete(`finance/abstract-record/${id}/`),
+};
+
+const fmt = (n) =>
+  new Intl.NumberFormat('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
+
+const STATUS_COLOR = {
+  APPROVED: "bg-green-100 text-green-800",
+  PENDING:  "bg-yellow-100 text-yellow-800",
+  DRAFT:    "bg-gray-100 text-gray-800",
+};
 
 export default function ProjectAbstract() {
   const { projectId } = useParams();
-  
-  const [showForm, setShowForm] = useState(false);
   const [abstracts, setAbstracts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [showForm, setShowForm]   = useState(false);
+  const [editing, setEditing]     = useState(null);
+  const [viewing, setViewing]     = useState(null);
+  const [filter, setFilter]       = useState("ALL");
 
-  const [stats, setStats] = useState({
-    totalRecords: 0,
-    approved: 0,
-    pending: 0,
-    draft: 0
-  });
+  useEffect(() => { load(); }, [projectId]);
 
-  useEffect(() => {
-    fetchAbstracts();
-  }, [projectId]);
-
-  const fetchAbstracts = async () => {
+  const load = async () => {
     try {
-      // Mock data - replace with actual API call when backend is ready
-      const mockData = [
-        {
-          id: "AC-2024-001",
-          date: "2024-07-15",
-          description: "Foundation Work - Phase 1",
-          totalAmount: 450000,
-          status: "APPROVED"
-        },
-        {
-          id: "AC-2024-002",
-          date: "2024-07-20",
-          description: "Road Base Layer Construction",
-          totalAmount: 680000,
-          status: "APPROVED"
-        },
-        {
-          id: "AC-2024-003",
-          date: "2024-07-25",
-          description: "Drainage System Installation",
-          totalAmount: 320000,
-          status: "PENDING"
-        }
-      ];
-
-      setTimeout(() => {
-        setAbstracts(mockData);
-        
-        setStats({
-          totalRecords: mockData.length,
-          approved: mockData.filter(a => a.status === "APPROVED").length,
-          pending: mockData.filter(a => a.status === "PENDING").length,
-          draft: mockData.filter(a => a.status === "DRAFT").length
-        });
-        
-        setLoading(false);
-      }, 300);
-    } catch (error) {
-      console.error("Error fetching abstracts:", error);
+      setLoading(true);
+      const res = await abstractAPI.list(projectId);
+      setAbstracts(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleAddNew = () => {
-    setEditingId(null);
-    setShowForm(true);
-  };
-
-  const handleEdit = (abstract) => {
-    setEditingId(abstract.id);
-    setShowForm(true);
-  };
-
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this abstract record?")) {
-      try {
-        setAbstracts(abstracts.filter(a => a.id !== id));
-        alert("Abstract record deleted successfully!");
-      } catch (error) {
-        console.error("Error deleting abstract:", error);
-        alert("Failed to delete abstract record.");
+    if (!window.confirm("Delete this abstract cost record?")) return;
+    try {
+      await abstractAPI.delete(id);
+      setAbstracts(prev => prev.filter(a => a.id !== id));
+    } catch { alert("Failed to delete."); }
+  };
+
+  const handleSave = async (payload) => {
+    try {
+      if (editing) {
+        await abstractAPI.update(editing.id, payload);
+      } else {
+        await abstractAPI.create(payload);
       }
+      await load();
+      setShowForm(false);
+      setEditing(null);
+    } catch (e) {
+      console.error(e.response?.data);
+      alert("Failed to save.");
     }
   };
 
-  const handleFormSubmit = (newAbstract) => {
-    if (editingId) {
-      setAbstracts(abstracts.map(a => 
-        a.id === editingId ? { ...newAbstract, id: editingId } : a
-      ));
-    } else {
-      setAbstracts([...abstracts, { ...newAbstract, id: `AC-2024-${Date.now()}` }]);
-    }
-    setShowForm(false);
-    setEditingId(null);
+  const filtered = filter === "ALL" ? abstracts : abstracts.filter(a => a.status === filter);
+
+  const counts = {
+    total:          abstracts.length,
+    approved:       abstracts.filter(a => a.status === "APPROVED").length,
+    pending:        abstracts.filter(a => a.status === "PENDING").length,
+    draft:          abstracts.filter(a => a.status === "DRAFT").length,
+    totalAmount:    abstracts.reduce((s, a) => s + (Number(a.grand_total) || 0), 0),
+    approvedAmount: abstracts
+      .filter(a => a.status === "APPROVED")
+      .reduce((s, a) => s + (Number(a.grand_total) || 0), 0),
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingId(null);
-  };
+  if (showForm) return (
+    <AbstractForm projectId={projectId} initial={editing} onSave={handleSave}
+      onCancel={() => { setShowForm(false); setEditing(null); }} />
+  );
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "APPROVED":
-        return "bg-green-100 text-green-800";
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "DRAFT":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  if (viewing) return (
+    <AbstractView item={viewing} onClose={() => setViewing(null)} />
+  );
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NP', {
-      style: 'currency',
-      currency: 'NPR',
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-
-  if (showForm) {
-    return (
-      <AbstractForm
-        projectId={projectId}
-        editingId={editingId}
-        existingData={editingId ? abstracts.find(a => a.id === editingId) : null}
-        onSubmit={handleFormSubmit}
-        onCancel={handleCancel}
-      />
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading abstract records...</div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex justify-center items-center h-40">
+      <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">Abstract Cost Records</h3>
-        <button
-          onClick={handleAddNew}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Abstract Cost
+        <h3 className="text-xl font-semibold text-gray-800">Abstract Cost</h3>
+        <button onClick={() => { setEditing(null); setShowForm(true); }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm">
+          <Plus className="w-4 h-4" /> Create Abstract
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">TOTAL RECORDS</p>
-          <p className="text-2xl font-bold">{stats.totalRecords}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">APPROVED</p>
-          <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">PENDING</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500 mb-1">DRAFT</p>
-          <p className="text-2xl font-bold text-gray-600">{stats.draft}</p>
-        </div>
+      {/* Stats — 6 cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[
+          { label: "TOTAL RECORDS",   val: counts.total,                         cls: "text-gray-800",  isAmount: false },
+          { label: "APPROVED",        val: counts.approved,                      cls: "text-green-600", isAmount: false },
+          { label: "PENDING",         val: counts.pending,                       cls: "text-yellow-600",isAmount: false },
+          { label: "DRAFT",           val: counts.draft,                         cls: "text-gray-500",  isAmount: false },
+          { label: "TOTAL AMOUNT",    val: "NPR " + fmt(counts.totalAmount),     cls: "text-blue-600",  isAmount: true  },
+          { label: "APPROVED AMOUNT", val: "NPR " + fmt(counts.approvedAmount),  cls: "text-green-700", isAmount: true  },
+        ].map(s => (
+          <div key={s.label} className="bg-white p-4 rounded-lg shadow">
+            <p className="text-xs text-gray-500 mb-1">{s.label}</p>
+            <p className={`font-bold ${s.cls} ${s.isAmount ? "text-sm" : "text-2xl"}`}>{s.val}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Filter Buttons */}
-      <div className="flex gap-3">
-        <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          All
-        </button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-          Approved
-        </button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-          Pending
-        </button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-          Draft
-        </button>
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        {["ALL", "APPROVED", "PENDING", "DRAFT"].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded text-sm font-medium transition ${
+              filter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}>
+            {f}
+          </button>
+        ))}
       </div>
 
-      {/* Abstracts Table */}
+      {/* Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Abstract ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {abstracts.map((abstract) => (
-                <tr key={abstract.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {abstract.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {abstract.date}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {abstract.description}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">
-                    {formatCurrency(abstract.totalAmount)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(abstract.status)}`}>
-                      {abstract.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(abstract)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        className="text-gray-600 hover:text-gray-800"
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(abstract.id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              {["Abstract ID", "Date", "Items", "Subtotal", "VAT (13%)", "Contingency (4%)", "Grand Total", "Status", "Actions"].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="px-4 py-10 text-center text-gray-400">
+                  No abstract records. Click "Create Abstract" to get started.
+                </td>
+              </tr>
+            ) : filtered.map(a => (
+              <tr key={a.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">AC-{String(a.id).padStart(4, '0')}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{a.date}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{a.items?.length || 0} items</td>
+                <td className="px-4 py-3 text-sm text-gray-700">NPR {fmt(a.subtotal)}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">NPR {fmt(a.vat_amount)}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">NPR {fmt(a.contingency_amount)}</td>
+                <td className="px-4 py-3 text-sm font-semibold text-blue-700">NPR {fmt(a.grand_total)}</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-1 text-xs rounded font-medium ${STATUS_COLOR[a.status] || "bg-gray-100 text-gray-800"}`}>
+                    {a.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button onClick={() => setViewing(a)} title="View"
+                      className="text-gray-500 hover:text-gray-800 p-1 rounded hover:bg-gray-100"><Eye className="w-4 h-4" /></button>
+                    <button onClick={() => { setEditing(a); setShowForm(true); }} title="Edit"
+                      className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(a.id)} title="Delete"
+                      className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          {/* Table footer — sum of currently filtered rows */}
+          {filtered.length > 0 && (
+            <tfoot>
+              <tr className="bg-blue-50 border-t-2 border-blue-200">
+                <td colSpan={3} className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">
+                  {filter === "ALL" ? "Total" : `${filter} Total`}
+                </td>
+                <td className="px-4 py-2 text-sm font-bold text-gray-700">
+                  NPR {fmt(filtered.reduce((s, a) => s + (Number(a.subtotal) || 0), 0))}
+                </td>
+                <td className="px-4 py-2 text-sm font-bold text-gray-700">
+                  NPR {fmt(filtered.reduce((s, a) => s + (Number(a.vat_amount) || 0), 0))}
+                </td>
+                <td className="px-4 py-2 text-sm font-bold text-gray-700">
+                  NPR {fmt(filtered.reduce((s, a) => s + (Number(a.contingency_amount) || 0), 0))}
+                </td>
+                <td className="px-4 py-2 text-sm font-bold text-blue-700">
+                  NPR {fmt(filtered.reduce((s, a) => s + (Number(a.grand_total) || 0), 0))}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </div>
     </div>
   );
 }
 
-// Abstract Form Component
-function AbstractForm({ projectId, editingId, existingData, onSubmit, onCancel }) {
-  const [workItems, setWorkItems] = useState([
-    {
-      id: 1,
-      description: "",
-      unit: "Un",
-      quantity: "",
-      rate: "",
-      amount: 0
-    }
-  ]);
+// ─── View ─────────────────────────────────────────────────────────────────────
+function AbstractView({ item, onClose }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-semibold">AC-{String(item.id).padStart(4, '0')} — Details</h3>
+        <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+      </div>
+      <div className="bg-white rounded-lg shadow p-6 space-y-4">
+        <div className="grid grid-cols-2 gap-4 text-sm border-b pb-4">
+          <div><p className="text-gray-500">Date</p><p className="font-medium">{item.date}</p></div>
+          <div><p className="text-gray-500">Status</p><p className="font-medium">{item.status}</p></div>
+        </div>
 
-  const [formData, setFormData] = useState({
-    date: existingData?.date || "",
-    status: existingData?.status || "DRAFT"
+        <table className="w-full border text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              {["#", "Description", "Unit", "Quantity", "Rate (NPR)", "Amount (NPR)"].map(h => (
+                <th key={h} className="px-3 py-2 text-left border font-medium text-gray-600">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(item.items || []).map((it, i) => (
+              <tr key={i} className="border-b hover:bg-gray-50">
+                <td className="px-3 py-2 border">{i + 1}</td>
+                <td className="px-3 py-2 border">{it.description}</td>
+                <td className="px-3 py-2 border">{it.unit}</td>
+                <td className="px-3 py-2 border">{it.quantity}</td>
+                <td className="px-3 py-2 border">{fmt(it.rate)}</td>
+                <td className="px-3 py-2 border font-semibold">{fmt(it.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="flex justify-end">
+          <div className="w-72 border rounded-lg overflow-hidden text-sm">
+            <div className="flex justify-between px-4 py-2 border-b">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium">NPR {fmt(item.subtotal)}</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
+              <span className="text-gray-600">VAT @ 13%</span>
+              <span className="font-medium">NPR {fmt(item.vat_amount)}</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
+              <span className="text-gray-600">Contingency @ 4%</span>
+              <span className="font-medium">NPR {fmt(item.contingency_amount)}</span>
+            </div>
+            <div className="flex justify-between px-4 py-3 bg-blue-600 text-white font-bold">
+              <span>Grand Total</span>
+              <span>NPR {fmt(item.grand_total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={onClose} className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Close</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Form ─────────────────────────────────────────────────────────────────────
+function AbstractForm({ projectId, initial, onSave, onCancel }) {
+  const [header, setHeader] = useState({
+    date:   initial?.date   || "",
+    status: initial?.status || "DRAFT",
   });
 
-  const [subtotal, setSubtotal] = useState(0);
-  const [vat, setVat] = useState(0);
-  const [contingency, setContingency] = useState(0);
-  const [grandTotal, setGrandTotal] = useState(0);
+  const newRow = () => ({
+    _key: Date.now() + Math.random(),
+    description: "", unit: "m³", quantity: "", rate: "", amount: 0,
+  });
 
-  useEffect(() => {
-    calculateTotals();
-  }, [workItems]);
+  const [rows, setRows] = useState(
+    initial?.items?.length
+      ? initial.items.map(r => ({ ...r, _key: r.id }))
+      : [newRow()]
+  );
 
-  const calculateTotals = () => {
-    const sub = workItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const vatAmount = sub * 0.13;
-    const contingencyAmount = sub * 0.04;
-    const grand = sub + vatAmount + contingencyAmount;
-    
-    setSubtotal(sub);
-    setVat(vatAmount);
-    setContingency(contingencyAmount);
-    setGrandTotal(grand);
-  };
-
-  const handleItemChange = (id, field, value) => {
-    setWorkItems(workItems.map(item => {
-      if (item.id === id) {
-        const updated = { ...item };
-        updated[field] = value;
-        
-        if (field === 'quantity' || field === 'rate') {
-          const qty = field === 'quantity' ? (parseFloat(value) || 0) : (parseFloat(item.quantity) || 0);
-          const rate = field === 'rate' ? (parseFloat(value) || 0) : (parseFloat(item.rate) || 0);
-          updated.amount = qty * rate;
-        }
-        
-        return updated;
-      }
-      return item;
+  const updateRow = (key, field, val) => {
+    setRows(prev => prev.map(r => {
+      if (r._key !== key) return r;
+      const u = { ...r, [field]: val };
+      const qty  = parseFloat(field === 'quantity' ? val : r.quantity) || 0;
+      const rate = parseFloat(field === 'rate'     ? val : r.rate)     || 0;
+      u.amount = parseFloat((qty * rate).toFixed(2));
+      return u;
     }));
   };
 
-  const addWorkItem = () => {
-    setWorkItems([...workItems, {
-      id: workItems.length + 1,
-      description: "",
-      unit: "Un",
-      quantity: "",
-      rate: "",
-      amount: 0
-    }]);
-  };
-
-  const removeWorkItem = (id) => {
-    if (workItems.length > 1) {
-      setWorkItems(workItems.filter(item => item.id !== id));
-    }
-  };
+  const subtotal    = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const vat         = subtotal * 0.13;
+  const contingency = subtotal * 0.04;
+  const grandTotal  = subtotal + vat + contingency;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    const description = workItems.map(w => w.description).filter(Boolean).join(", ");
-    
-    const abstractData = {
-      date: formData.date,
-      description: description || "Abstract Cost Record",
-      totalAmount: grandTotal,
-      status: formData.status
+    if (!header.date) { alert("Date is required."); return; }
+    const payload = {
+      project: parseInt(projectId),
+      date:    header.date,
+      status:  header.status,
+      items: rows.map(({ _key, ...r }) => ({
+        description: r.description,
+        unit:        r.unit,
+        quantity:    parseFloat(r.quantity) || 0,
+        rate:        parseFloat(r.rate)     || 0,
+        amount:      parseFloat(r.amount)   || 0,
+      })),
     };
-    
-    onSubmit(abstractData);
+    onSave(payload);
   };
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-xl font-semibold">
-        {editingId ? "Edit Abstract Cost" : "Create Abstract Cost"}
-      </h3>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-semibold">{initial ? "Edit" : "Create"} Abstract Cost</h3>
+        <button onClick={onCancel} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+      </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
-        {/* Form Header */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+            <input type="date" required value={header.date}
+              onChange={e => setHeader(p => ({ ...p, date: e.target.value }))}
+              className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="DRAFT">Draft</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
+            <select value={header.status}
+              onChange={e => setHeader(p => ({ ...p, status: e.target.value }))}
+              className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+              {["DRAFT", "PENDING", "APPROVED"].map(s =>
+                <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+              )}
             </select>
           </div>
         </div>
 
-        {/* Work Items Table */}
         <div className="overflow-x-auto">
-          <table className="w-full border">
+          <table className="w-full border text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 border">S.N</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 border">DESCRIPTION OF WORK</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 border">UNIT</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 border">QUANTITY</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 border">RATE</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 border">AMOUNT</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 border">ACTION</th>
+                {["#", "Description of Work", "Unit", "Quantity", "Rate (NPR)", "Amount (NPR)", ""].map(h => (
+                  <th key={h} className="px-3 py-2 text-left border text-xs font-medium text-gray-600">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {workItems.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-4 py-3 border text-sm text-center">{item.id}</td>
-                  <td className="px-4 py-3 border">
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                      placeholder="Work description"
-                      className="w-full px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
+              {rows.map((row, idx) => (
+                <tr key={row._key} className="hover:bg-gray-50">
+                  <td className="px-2 py-2 border text-center text-gray-500 text-xs">{idx + 1}</td>
+                  <td className="px-2 py-2 border">
+                    <input type="text" placeholder="Work description" value={row.description}
+                      onChange={e => updateRow(row._key, 'description', e.target.value)}
+                      className="w-52 px-2 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-400 rounded" />
                   </td>
-                  <td className="px-4 py-3 border">
-                    <select
-                      value={item.unit}
-                      onChange={(e) => handleItemChange(item.id, 'unit', e.target.value)}
-                      className="w-24 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    >
-                      <option>Un</option>
-                      <option>m³</option>
-                      <option>m²</option>
-                      <option>m</option>
-                      <option>kg</option>
-                      <option>ton</option>
+                  <td className="px-2 py-2 border">
+                    <select value={row.unit} onChange={e => updateRow(row._key, 'unit', e.target.value)}
+                      className="w-20 text-sm border-0 focus:ring-1 focus:ring-blue-400 rounded">
+                      {["m³", "m²", "m", "kg", "ton", "nos", "ls"].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </td>
-                  <td className="px-4 py-3 border">
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
-                      placeholder="0"
-                      className="w-28 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
+                  <td className="px-2 py-2 border">
+                    <input type="number" step="any" placeholder="0" value={row.quantity}
+                      onChange={e => updateRow(row._key, 'quantity', e.target.value)}
+                      className="w-24 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-400 rounded" />
                   </td>
-                  <td className="px-4 py-3 border">
-                    <input
-                      type="number"
-                      value={item.rate}
-                      onChange={(e) => handleItemChange(item.id, 'rate', e.target.value)}
-                      placeholder="0.00"
-                      className="w-32 px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500 text-sm"
-                    />
+                  <td className="px-2 py-2 border">
+                    <input type="number" step="any" placeholder="0.00" value={row.rate}
+                      onChange={e => updateRow(row._key, 'rate', e.target.value)}
+                      className="w-28 px-1 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-400 rounded" />
                   </td>
-                  <td className="px-4 py-3 border text-sm font-medium">
-                    {item.amount.toFixed(2)}
+                  <td className="px-2 py-2 border bg-blue-50 font-semibold text-blue-700 text-sm">
+                    {fmt(row.amount)}
                   </td>
-                  <td className="px-4 py-3 border text-center">
-                    <button
-                      type="button"
-                      onClick={() => removeWorkItem(item.id)}
-                      className="text-red-600 hover:text-red-800"
-                      disabled={workItems.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
+                  <td className="px-2 py-2 border text-center">
+                    <button type="button" disabled={rows.length === 1}
+                      onClick={() => setRows(r => r.filter(x => x._key !== row._key))}
+                      className="text-red-500 hover:text-red-700 disabled:opacity-30">
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>
                 </tr>
@@ -475,50 +399,37 @@ function AbstractForm({ projectId, editingId, existingData, onSubmit, onCancel }
           </table>
         </div>
 
-        <button
-          type="button"
-          onClick={addWorkItem}
-          className="text-blue-600 hover:text-blue-800 flex items-center gap-2 text-sm font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Add Work Item
+        <button type="button" onClick={() => setRows(r => [...r, newRow()])}
+          className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+          <Plus className="w-4 h-4" /> Add Work Item
         </button>
 
-        {/* Totals */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center py-2 border-t">
-            <span className="font-medium">Sub-Total</span>
-            <span className="font-semibold">NPR {subtotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="font-medium">VAT @ 13%</span>
-            <span className="font-semibold">NPR {vat.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="font-medium">Contingency @ 4%</span>
-            <span className="font-semibold">NPR {contingency.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-t-2 border-gray-300">
-            <span className="text-lg font-bold">Grand Total</span>
-            <span className="text-lg font-bold text-blue-600">NPR {grandTotal.toFixed(2)}</span>
+        <div className="flex justify-end">
+          <div className="w-72 border rounded-lg overflow-hidden text-sm">
+            <div className="flex justify-between px-4 py-2 border-b">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium">NPR {fmt(subtotal)}</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
+              <span className="text-gray-600">VAT @ 13%</span>
+              <span className="font-medium">NPR {fmt(vat)}</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
+              <span className="text-gray-600">Contingency @ 4%</span>
+              <span className="font-medium">NPR {fmt(contingency)}</span>
+            </div>
+            <div className="flex justify-between px-4 py-3 bg-blue-600 text-white font-bold">
+              <span>Grand Total</span>
+              <span>NPR {fmt(grandTotal)}</span>
+            </div>
           </div>
         </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Save Abstract Cost
-          </button>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <button type="button" onClick={onCancel}
+            className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button type="submit"
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Abstract</button>
         </div>
       </form>
     </div>

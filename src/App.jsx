@@ -116,7 +116,8 @@ export default function App() {
             <Route path="projects/:projectId/logs" element={<ProjectLogs />} />
 
             {/* Delay Logs */}
-            <Route path="delay-logs/:projectId" element={<DelayLogs />} />
+            <Route path="delay-logs" element={<Navigate to="/app/projects/delayed" replace />} />
+<Route path="delay-logs/:projectId" element={<DelayLogs />} />
 
             {/* Contractors — /add must come before /:id routes */}
             <Route path="contractors" element={<ContractorsList />} />
