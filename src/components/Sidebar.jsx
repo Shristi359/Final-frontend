@@ -1,58 +1,32 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   LayoutDashboard, Briefcase, FolderKanban,
   Clock, Settings, LogOut, ChevronLeft, ChevronRight,
-  Users, HardHat, FileSpreadsheet,
+  Users, HardHat, FileSpreadsheet, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { projectsAPI, delayLogsAPI } from "../api/axios";
+
+const NAV_ITEMS = [
+  { to: "/app/dashboard",    icon: LayoutDashboard,  label: "Dashboard" },
+  { to: "/app/projects",     icon: FolderKanban,     label: "Projects" },
+  { to: "/app/contractors",  icon: Briefcase,        label: "Contractors" },
+  { to: "/app/delay-logs",   icon: Clock,            label: "Delay Logs", badge: 3 },
+  { to: "/app/past-records", icon: FileSpreadsheet,  label: "Past Records" },
+];
+
+const OFFICIALS_ITEMS = [
+  { to: "/app/engineers",    icon: HardHat, label: "Engineers" },
+  { to: "/app/chairpersons", icon: Users,   label: "Chairpersons" },
+];
+
+const BOTTOM_ITEMS = [
+  { to: "/app/settings", icon: Settings, label: "Settings" },
+];
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const [missingDelayLogs, setMissingDelayLogs] = useState(0);
+  const [officialsOpen, setOfficialsOpen] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchMissingDelayLogsCount();
-  }, []);
-
-  const fetchMissingDelayLogsCount = async () => {
-    try {
-      const [projectsRes, logsRes] = await Promise.allSettled([
-        projectsAPI.list(),
-        delayLogsAPI.list(),
-      ]);
-
-      if (projectsRes.status !== "fulfilled" || logsRes.status !== "fulfilled") return;
-
-      const delayedProjects = projectsRes.value.data.filter(p => p.status === "DELAYED");
-      const delayLogs       = logsRes.value.data;
-
-      // Get unique project IDs that have submitted at least one delay log
-      const projectsWithLogs = new Set(delayLogs.map(log => log.project));
-
-      // Count delayed projects that have NOT submitted any delay log
-      const missing = delayedProjects.filter(p => !projectsWithLogs.has(p.id)).length;
-
-      setMissingDelayLogs(missing);
-    } catch (err) {
-      console.error("Failed to fetch delay log counts:", err);
-    }
-  };
-
-  const NAV_ITEMS = [
-    { to: "/app/dashboard",        icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/app/projects",         icon: FolderKanban,    label: "Projects" },
-    { to: "/app/contractors",      icon: Briefcase,       label: "Contractors" },
-    { to: "/app/engineers",        icon: HardHat,         label: "Engineers" },
-    { to: "/app/chairpersons",     icon: Users,           label: "Chairpersons" },
-    { to: "/app/projects/delayed", icon: Clock,           label: "Delay Logs", badge: missingDelayLogs },
-    { to: "/app/past-records",     icon: FileSpreadsheet, label: "Past Records" },
-  ];
-
-  const BOTTOM_ITEMS = [
-    { to: "/app/settings", icon: Settings, label: "Settings" },
-  ];
 
   const handleLogout = async () => {
     try {
@@ -81,7 +55,7 @@ export default function Sidebar() {
         )}
         <button
           onClick={() => setCollapsed(v => !v)}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+          className={`w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white`}
         >
           {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
@@ -92,6 +66,7 @@ export default function Sidebar() {
         {!collapsed && (
           <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-3 mb-2">Menu</p>
         )}
+        
         {NAV_ITEMS.map(({ to, icon: Icon, label, badge }) => (
           <NavLink
             key={to}
@@ -114,20 +89,71 @@ export default function Sidebar() {
                 {!collapsed && (
                   <>
                     <span className="flex-1 truncate">{label}</span>
-                    {badge > 0 && (
+                    {badge && (
                       <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
                         {badge}
                       </span>
                     )}
                   </>
                 )}
-                {collapsed && badge > 0 && (
+                {collapsed && badge && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
                 )}
               </>
             )}
           </NavLink>
         ))}
+
+        {/* OFFICIALS SECTION */}
+        <div className="pt-1">
+          {!collapsed ? (
+            <>
+              <button
+                onClick={() => setOfficialsOpen(v => !v)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:bg-white/8 hover:text-white transition-all duration-150"
+              >
+                <Users size={17} className="text-white/50 shrink-0" />
+                <span className="flex-1 text-left truncate">Officials</span>
+                {officialsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {officialsOpen && (
+                <div className="mt-0.5 ml-6 space-y-0.5 border-l border-white/10 pl-2">
+                  {OFFICIALS_ITEMS.map(({ to, icon: Icon, label }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150
+                        ${isActive
+                          ? "bg-white/15 text-white font-medium"
+                          : "text-white/60 hover:bg-white/8 hover:text-white"
+                        }`
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <Icon size={15} className={`shrink-0 ${isActive ? "text-blue-300" : "text-white/50"}`} />
+                          <span className="truncate">{label}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <NavLink
+              to="/app/engineers"
+              title="Officials"
+              className={({ isActive }) =>
+                `flex items-center justify-center px-3 py-2.5 rounded-lg text-sm transition-all duration-150
+                ${isActive ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/8 hover:text-white"}`
+              }
+            >
+              <Users size={17} />
+            </NavLink>
+          )}
+        </div>
       </nav>
 
       {/* BOTTOM */}
