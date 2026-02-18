@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Eye, XCircle, Loader2, FolderOpen } from "lucide-react";
+import { Plus, Eye, XCircle, Loader2, FolderOpen, Pencil } from "lucide-react";
 import { projectsAPI, contractorsAPI, engineersAPI, chairpersonsAPI, lookupsAPI } from "../../api/axios";
 
 export default function ProjectsList() {
@@ -16,9 +16,7 @@ export default function ProjectsList() {
   const fetchData = async () => {
     try {
       const projectsRes = await projectsAPI.list();
-      
       console.log("Projects data:", projectsRes.data);
-      
       setProjects(projectsRes.data);
       setLoading(false);
     } catch (error) {
@@ -27,7 +25,6 @@ export default function ProjectsList() {
     }
   };
 
-  // Helper functions to get names from nested data
   const getContractorName = (project) => {
     if (project.contractor_details) {
       return project.contractor_details.contractor_name || 
@@ -38,11 +35,11 @@ export default function ProjectsList() {
   };
 
   const getEngineerName = (project) => {
-  if (project.assigned_engineer_details?.account?.full_name) {
-    return project.assigned_engineer_details.account.full_name;
-  }
-  return 'Not assigned';
-};
+    if (project.assigned_engineer_details?.account?.full_name) {
+      return project.assigned_engineer_details.account.full_name;
+    }
+    return 'Not assigned';
+  };
 
   const getChairpersonName = (project) => {
     if (project.chairperson_details?.account?.full_name) {
@@ -51,26 +48,18 @@ export default function ProjectsList() {
     return 'Not assigned';
   };
 
-  const getBudgetSourceName = (project) => {
-    if (project.budget_source_details?.name) {
-      return project.budget_source_details.name;
-    }
-    return 'N/A';
-  };
-
-  const getFiscalYearLabel = (project) => {
-    if (project.fiscal_year_details?.year_label) {
-      return project.fiscal_year_details.year_label;
-    }
-    return 'N/A';
-  };
-
   const handleViewProject = (e, projectId) => {
     e.preventDefault();
     e.stopPropagation();
     navigate(`/app/projects/${projectId}/overview`, {
       state: { from: 'all' }
     });
+  };
+
+  const handleEditProject = (e, projectId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/app/projects/${projectId}/edit`);
   };
 
   const handleCancelProject = async (e, project) => {
@@ -85,7 +74,6 @@ export default function ProjectsList() {
           ...project,
           status: "CANCELLED"
         });
-        
         fetchData();
         alert("Project cancelled successfully");
       } catch (error) {
@@ -103,14 +91,12 @@ export default function ProjectsList() {
   const getStatusBadge = (status) => {
     const badges = {
       COMING_SOON: { bg: "bg-blue-100", text: "text-blue-800", label: "Coming Soon" },
-      ONGOING: { bg: "bg-green-100", text: "text-green-800", label: "Ongoing" },
-      DELAYED: { bg: "bg-red-100", text: "text-red-800", label: "Delayed" },
-      COMPLETED: { bg: "bg-purple-100", text: "text-purple-800", label: "Completed" },
-      CANCELLED: { bg: "bg-gray-100", text: "text-gray-800", label: "Cancelled" }
+      ONGOING:     { bg: "bg-green-100", text: "text-green-800", label: "Ongoing" },
+      DELAYED:     { bg: "bg-red-100", text: "text-red-800", label: "Delayed" },
+      COMPLETED:   { bg: "bg-purple-100", text: "text-purple-800", label: "Completed" },
+      CANCELLED:   { bg: "bg-gray-100", text: "text-gray-800", label: "Cancelled" }
     };
-    
     const badge = badges[status] || badges.ONGOING;
-    
     return (
       <span className={`px-3 py-1 text-xs rounded-full font-medium ${badge.bg} ${badge.text}`}>
         {badge.label}
@@ -118,16 +104,14 @@ export default function ProjectsList() {
     );
   };
 
-  const getStatusCounts = () => {
-    return {
-      all: projects.length,
-      coming_soon: projects.filter(p => p.status === "COMING_SOON").length,
-      ongoing: projects.filter(p => p.status === "ONGOING").length,
-      delayed: projects.filter(p => p.status === "DELAYED").length,
-      completed: projects.filter(p => p.status === "COMPLETED").length,
-      cancelled: projects.filter(p => p.status === "CANCELLED").length
-    };
-  };
+  const getStatusCounts = () => ({
+    all:        projects.length,
+    coming_soon: projects.filter(p => p.status === "COMING_SOON").length,
+    ongoing:    projects.filter(p => p.status === "ONGOING").length,
+    delayed:    projects.filter(p => p.status === "DELAYED").length,
+    completed:  projects.filter(p => p.status === "COMPLETED").length,
+    cancelled:  projects.filter(p => p.status === "CANCELLED").length,
+  });
 
   if (loading) {
     return (
@@ -158,12 +142,12 @@ export default function ProjectsList() {
 
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex flex-wrap gap-3">
-          <FilterButton label="All" count={counts.all} isActive={filter === "ALL"} onClick={() => setFilter("ALL")} />
-          <FilterButton label="Coming Soon" count={counts.coming_soon} isActive={filter === "COMING_SOON"} onClick={() => setFilter("COMING_SOON")} color="blue" />
-          <FilterButton label="Ongoing" count={counts.ongoing} isActive={filter === "ONGOING"} onClick={() => setFilter("ONGOING")} color="green" />
-          <FilterButton label="Delayed" count={counts.delayed} isActive={filter === "DELAYED"} onClick={() => setFilter("DELAYED")} color="red" />
-          <FilterButton label="Completed" count={counts.completed} isActive={filter === "COMPLETED"} onClick={() => setFilter("COMPLETED")} color="purple" />
-          <FilterButton label="Cancelled" count={counts.cancelled} isActive={filter === "CANCELLED"} onClick={() => setFilter("CANCELLED")} color="gray" />
+          <FilterButton label="All"         count={counts.all}         isActive={filter === "ALL"}         onClick={() => setFilter("ALL")}         />
+          <FilterButton label="Coming Soon" count={counts.coming_soon} isActive={filter === "COMING_SOON"} onClick={() => setFilter("COMING_SOON")} color="blue"   />
+          <FilterButton label="Ongoing"     count={counts.ongoing}     isActive={filter === "ONGOING"}     onClick={() => setFilter("ONGOING")}     color="green"  />
+          <FilterButton label="Delayed"     count={counts.delayed}     isActive={filter === "DELAYED"}     onClick={() => setFilter("DELAYED")}     color="red"    />
+          <FilterButton label="Completed"   count={counts.completed}   isActive={filter === "COMPLETED"}   onClick={() => setFilter("COMPLETED")}   color="purple" />
+          <FilterButton label="Cancelled"   count={counts.cancelled}   isActive={filter === "CANCELLED"}   onClick={() => setFilter("CANCELLED")}   color="gray"   />
         </div>
       </div>
 
@@ -209,18 +193,14 @@ export default function ProjectsList() {
                     <div className="text-xs text-gray-500">{project.municipality}, Ward {project.ward_no}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{project.location || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {getContractorName(project)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {getEngineerName(project)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {getChairpersonName(project)}
-                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getContractorName(project)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getEngineerName(project)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getChairpersonName(project)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(project.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
+
+                      {/* View */}
                       <button
                         onClick={(e) => handleViewProject(e, project.id)}
                         className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition"
@@ -229,6 +209,20 @@ export default function ProjectsList() {
                       >
                         <Eye className="w-5 h-5" />
                       </button>
+
+                      {/* Edit — hidden for cancelled projects */}
+                      {project.status !== "CANCELLED" && (
+                        <button
+                          onClick={(e) => handleEditProject(e, project.id)}
+                          className="text-amber-600 hover:text-amber-900 p-1 hover:bg-amber-50 rounded transition"
+                          title="Edit Project"
+                          type="button"
+                        >
+                          <Pencil className="w-5 h-5" />
+                        </button>
+                      )}
+
+                      {/* Cancel — hidden for cancelled and completed projects */}
                       {project.status !== "CANCELLED" && project.status !== "COMPLETED" && (
                         <button
                           onClick={(e) => handleCancelProject(e, project)}
@@ -239,6 +233,7 @@ export default function ProjectsList() {
                           <XCircle className="w-5 h-5" />
                         </button>
                       )}
+
                     </div>
                   </td>
                 </tr>
@@ -253,11 +248,11 @@ export default function ProjectsList() {
 
 function FilterButton({ label, count, isActive, onClick, color = "gray" }) {
   const colors = {
-    blue: "border-blue-500 bg-blue-50 text-blue-700",
-    green: "border-green-500 bg-green-50 text-green-700",
-    red: "border-red-500 bg-red-50 text-red-700",
+    blue:   "border-blue-500 bg-blue-50 text-blue-700",
+    green:  "border-green-500 bg-green-50 text-green-700",
+    red:    "border-red-500 bg-red-50 text-red-700",
     purple: "border-purple-500 bg-purple-50 text-purple-700",
-    gray: "border-gray-500 bg-gray-50 text-gray-700"
+    gray:   "border-gray-500 bg-gray-50 text-gray-700",
   };
 
   return (

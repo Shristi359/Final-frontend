@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { engineersAPI, accountsAPI } from "../../api/axios";
+import { engineersAPI, authAPI } from "../../api/axios";
 import { Loader2 } from "lucide-react";
 
 export default function AddEngineer() {
@@ -8,7 +8,7 @@ export default function AddEngineer() {
   const { id } = useParams();
   const isEdit = Boolean(id);
 
-  const [step, setStep] = useState(isEdit ? 2 : 1); // Edit skips to step 2
+  const [step, setStep] = useState(1);
   const [createdAccountId, setCreatedAccountId] = useState(null);
 
   const [accountData, setAccountData] = useState({
@@ -21,37 +21,64 @@ export default function AddEngineer() {
 
   const [loading, setLoading]   = useState(false);
   const [fetching, setFetching] = useState(isEdit);
-  const [error, setError]       = useState(null);
+  const [errors, setErrors]     = useState({});  // field-level errors
 
-  // Pre-fill engineer data when editing
   useEffect(() => {
     if (!isEdit) return;
     engineersAPI.get(id)
       .then(res => {
         const d = res.data;
-        setEngineerData({
-          ward_no: d.ward_no || "",
-          role:    d.role    || "ENGINEER",
-        });
+        setEngineerData({ ward_no: d.ward_no || "", role: d.role || "ENGINEER" });
+        setStep(2);
       })
-      .catch(() => setError("Failed to load engineer data."))
+      .catch(() => setErrors({ general: "Failed to load engineer data." }))
       .finally(() => setFetching(false));
   }, [id, isEdit]);
 
-  const handleAccountChange  = (e) => setAccountData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  const handleEngineerChange = (e) => setEngineerData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleAccountChange  = (e) => {
+    setAccountData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setErrors(prev => ({ ...prev, [e.target.name]: null })); // clear field error on change
+  };
+
+  const handleEngineerChange = (e) => {
+    setEngineerData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setErrors(prev => ({ ...prev, [e.target.name]: null }));
+  };
+
+  // Frontend validation before hitting the API
+  const validateAccount = () => {
+    const errs = {};
+    if (!accountData.user_id.trim())   errs.user_id   = "User ID is required.";
+    if (!accountData.full_name.trim()) errs.full_name = "Full name is required.";
+    if (!accountData.email.trim())     errs.email     = "Email is required.";
+    if (accountData.password.length < 8) errs.password = "Password must be at least 8 characters.";
+    return errs;
+  };
 
   const handleAccountSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
+
+    // Validate first — avoid unnecessary API call
+    const validationErrors = validateAccount();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     setLoading(true);
-    setError(null);
     try {
-      const res = await accountsAPI.create(accountData);
+      const res = await authAPI.register(accountData);
       setCreatedAccountId(res.data.id);
       setStep(2);
     } catch (err) {
-      console.error("Error creating account:", err);
-      setError(err.response?.data?.message || "Failed to create account.");
+      // Map Django field errors directly to state
+      const data = err.response?.data;
+      if (data && typeof data === "object") {
+        setErrors(data); // e.g. { email: ["Already exists."], user_id: [...] }
+      } else {
+        setErrors({ general: "Failed to create account. Please try again." });
+      }
     } finally {
       setLoading(false);
     }
@@ -60,13 +87,13 @@ export default function AddEngineer() {
   const handleEngineerSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setErrors({});
     try {
       const payload = {
         ward_no:    engineerData.ward_no ? parseInt(engineerData.ward_no) : null,
-        role:       engineerData.role,
-        is_active:  true,
-        ...(!isEdit && { account: createdAccountId }),
+      role:       engineerData.role,
+      is_active:  true,
+      ...(!isEdit && { account_id: createdAccountId }),  // ✅ fixed
       };
 
       if (isEdit) {
@@ -78,8 +105,12 @@ export default function AddEngineer() {
       }
       navigate("/app/engineers");
     } catch (err) {
-      console.error("Error saving engineer:", err);
-      setError(err.response?.data?.message || `Failed to ${isEdit ? "update" : "create"} engineer.`);
+      const data = err.response?.data;
+      if (data && typeof data === "object") {
+        setErrors(data);
+      } else {
+        setErrors({ general: `Failed to ${isEdit ? "update" : "create"} engineer.` });
+      }
     } finally {
       setLoading(false);
     }
@@ -101,7 +132,6 @@ export default function AddEngineer() {
         {isEdit ? "Edit Engineer" : "Add New Engineer"}
       </h2>
 
-      {/* Step indicator — only show for add mode */}
       {!isEdit && (
         <div className="flex items-center justify-center gap-4 mb-8">
           <StepIndicator number={1} label="Account Info"     active={step === 1} completed={step > 1} />
@@ -110,20 +140,21 @@ export default function AddEngineer() {
         </div>
       )}
 
-      {error && (
+      {/* General error */}
+      {errors.general && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+          {errors.general}
         </div>
       )}
 
-      {/* STEP 1 — Account (add only) */}
+      {/* STEP 1 — Account */}
       {step === 1 && !isEdit && (
         <form onSubmit={handleAccountSubmit} className="bg-white border rounded-lg p-6 space-y-6">
           <Section title="Account Information">
-            <Input label="User ID *"   name="user_id"   value={accountData.user_id}   onChange={handleAccountChange} required placeholder="e.g., eng001" />
-            <Input label="Full Name *" name="full_name" value={accountData.full_name} onChange={handleAccountChange} required />
-            <Input label="Email *"     name="email"     type="email" value={accountData.email} onChange={handleAccountChange} required />
-            <Input label="Password *"  name="password"  type="password" value={accountData.password} onChange={handleAccountChange} required />
+            <Input label="User ID"   name="user_id"   value={accountData.user_id}   onChange={handleAccountChange} required placeholder="e.g., eng001"   error={errors.user_id?.[0]   || errors.user_id} />
+            <Input label="Full Name" name="full_name" value={accountData.full_name} onChange={handleAccountChange} required                               error={errors.full_name?.[0] || errors.full_name} />
+            <Input label="Email"     name="email"     type="email" value={accountData.email} onChange={handleAccountChange} required                     error={errors.email?.[0]     || errors.email} />
+            <Input label="Password"  name="password"  type="password" value={accountData.password} onChange={handleAccountChange} required placeholder="Min. 8 characters" error={errors.password?.[0] || errors.password} />
           </Section>
           <div className="flex justify-end gap-4 pt-4 border-t">
             <button type="button" onClick={handleCancel}
@@ -144,8 +175,10 @@ export default function AddEngineer() {
         <form onSubmit={handleEngineerSubmit} className="bg-white border rounded-lg p-6 space-y-6">
           <Section title="Engineer Information">
             <Input label="Ward Number" name="ward_no" type="number"
-              value={engineerData.ward_no} onChange={handleEngineerChange} placeholder="e.g., 16" />
-            <Select label="Role *" name="role" value={engineerData.role} onChange={handleEngineerChange} required
+              value={engineerData.ward_no} onChange={handleEngineerChange}
+              placeholder="e.g., 16" error={errors.ward_no?.[0] || errors.ward_no} />
+            <Select label="Role" name="role" value={engineerData.role} onChange={handleEngineerChange} required
+              error={errors.role?.[0] || errors.role}
               options={[
                 { value: "ENGINEER",   label: "Engineer" },
                 { value: "SUPERVISOR", label: "Supervisor" },
@@ -176,6 +209,8 @@ export default function AddEngineer() {
   );
 }
 
+// ── Sub-components ──────────────────────────────────────────────
+
 function StepIndicator({ number, label, active, completed }) {
   return (
     <div className="flex flex-col items-center">
@@ -200,29 +235,40 @@ function Section({ title, children }) {
   );
 }
 
-function Input({ label, name, value, onChange, type = "text", required = false, placeholder = "" }) {
+function Input({ label, name, value, onChange, type = "text", required = false, placeholder = "", error }) {
   return (
     <div>
       <label className="block text-sm text-gray-600 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      <input type={type} name={name} value={value} onChange={onChange} required={required} placeholder={placeholder}
-        className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+      <input
+        type={type} name={name} value={value} onChange={onChange}
+        required={required} placeholder={placeholder}
+        className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+          error ? "border-red-400 bg-red-50" : "border-gray-300"
+        }`}
+      />
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }
 
-function Select({ label, name, value, onChange, options = [], required = false }) {
+function Select({ label, name, value, onChange, options = [], required = false, error }) {
   return (
     <div>
       <label className="block text-sm text-gray-600 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      <select name={name} value={value} onChange={onChange} required={required}
-        className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+      <select
+        name={name} value={value} onChange={onChange} required={required}
+        className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+          error ? "border-red-400 bg-red-50" : "border-gray-300"
+        }`}
+      >
         <option value="">Select {label}</option>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }

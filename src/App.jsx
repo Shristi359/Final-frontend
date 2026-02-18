@@ -23,6 +23,7 @@ import CompletedProjects from "./pages/projects/CompletedProjects";
 import DelayedProjects from "./pages/projects/DelayedProjects";
 import CancelledProjects from "./pages/projects/CancelledProjects";
 import AddProject from "./pages/projects/AddProject";
+import EditProject from "./pages/projects/EditProject";
 
 // PROJECT DETAILS
 import ProjectLayout from "./pages/projects/ProjectLayout";
@@ -93,13 +94,14 @@ export default function App() {
             {/* Dashboard */}
             <Route path="dashboard" element={<Dashboard />} />
 
-            {/* Projects */}
+            {/* Projects — /add and /edit must come before /:projectId routes */}
             <Route path="projects" element={<ProjectsList />} />
             <Route path="projects/ongoing" element={<OngoingProjects />} />
             <Route path="projects/completed" element={<CompletedProjects />} />
             <Route path="projects/delayed" element={<DelayedProjects />} />
             <Route path="projects/cancelled" element={<CancelledProjects />} />
             <Route path="projects/add" element={<AddProject />} />
+            <Route path="projects/:projectId/edit" element={<EditProject />} />
 
             {/* Project Details with Tabs */}
             <Route path="projects/:projectId" element={<ProjectLayout />}>
@@ -117,7 +119,7 @@ export default function App() {
 
             {/* Delay Logs */}
             <Route path="delay-logs" element={<Navigate to="/app/projects/delayed" replace />} />
-<Route path="delay-logs/:projectId" element={<DelayLogs />} />
+            <Route path="delay-logs/:projectId" element={<DelayLogs />} />
 
             {/* Contractors — /add must come before /:id routes */}
             <Route path="contractors" element={<ContractorsList />} />

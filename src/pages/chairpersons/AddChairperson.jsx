@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { chairpersonsAPI, accountsAPI } from "../../api/axios";
+import { chairpersonsAPI, authAPI } from "../../api/axios";
 import { Loader2 } from "lucide-react";
 
 export default function AddChairperson() {
@@ -42,7 +42,7 @@ export default function AddChairperson() {
     setError(null);
 
     try {
-      const response = await accountsAPI.create(accountData);
+      const response = await authAPI.register(accountData);
       setCreatedAccountId(response.data.id);
       setStep(2);
     } catch (error) {
@@ -60,7 +60,7 @@ export default function AddChairperson() {
 
     try {
       const submitData = {
-        account: createdAccountId,
+        account_id: createdAccountId,
         term_start: chairpersonData.term_start || null,
         term_end: chairpersonData.term_end || null
       };
