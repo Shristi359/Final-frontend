@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus, Edit, Trash2, Eye, Loader2, X } from "lucide-react";
 import api from "../../api/axios";
 
@@ -21,6 +22,7 @@ const STATUS_COLOR = {
 
 export default function ProjectAbstract() {
   const { projectId } = useParams();
+  const { t } = useTranslation();
   const [abstracts, setAbstracts] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
@@ -43,11 +45,11 @@ export default function ProjectAbstract() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this abstract cost record?")) return;
+    if (!window.confirm(t("msg.confirm_delete"))) return;
     try {
       await abstractAPI.delete(id);
       setAbstracts(prev => prev.filter(a => a.id !== id));
-    } catch { alert("Failed to delete."); }
+    } catch { alert(t("overview.failed_delete")); }
   };
 
   const handleSave = async (payload) => {
@@ -62,7 +64,7 @@ export default function ProjectAbstract() {
       setEditing(null);
     } catch (e) {
       console.error(e.response?.data);
-      alert("Failed to save.");
+      alert(t("overview.failed_save"));
     }
   };
 
@@ -97,22 +99,22 @@ export default function ProjectAbstract() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-gray-800">Abstract Cost</h3>
+        <h3 className="text-xl font-semibold text-gray-800">{t("project.abstract")}</h3>
         <button onClick={() => { setEditing(null); setShowForm(true); }}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm">
-          <Plus className="w-4 h-4" /> Create Abstract
+          <Plus className="w-4 h-4" /> {t("abstract.create")}
         </button>
       </div>
 
-      {/* Stats — 6 cards */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { label: "TOTAL RECORDS",   val: counts.total,                         cls: "text-gray-800",  isAmount: false },
-          { label: "APPROVED",        val: counts.approved,                      cls: "text-green-600", isAmount: false },
-          { label: "PENDING",         val: counts.pending,                       cls: "text-yellow-600",isAmount: false },
-          { label: "DRAFT",           val: counts.draft,                         cls: "text-gray-500",  isAmount: false },
-          { label: "TOTAL AMOUNT",    val: "NPR " + fmt(counts.totalAmount),     cls: "text-blue-600",  isAmount: true  },
-          { label: "APPROVED AMOUNT", val: "NPR " + fmt(counts.approvedAmount),  cls: "text-green-700", isAmount: true  },
+          { label: t("measurement.total_records"),  val: counts.total,                         cls: "text-gray-800",   isAmount: false },
+          { label: t("measurement.verified"),       val: counts.approved,                      cls: "text-green-600",  isAmount: false },
+          { label: t("measurement.pending"),        val: counts.pending,                       cls: "text-yellow-600", isAmount: false },
+          { label: t("measurement.draft"),          val: counts.draft,                         cls: "text-gray-500",   isAmount: false },
+          { label: t("materials.total_amount"),     val: "NPR " + fmt(counts.totalAmount),     cls: "text-blue-600",   isAmount: true  },
+          { label: t("overview.approved_estimates"),val: "NPR " + fmt(counts.approvedAmount),  cls: "text-green-700",  isAmount: true  },
         ].map(s => (
           <div key={s.label} className="bg-white p-4 rounded-lg shadow">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
@@ -128,7 +130,10 @@ export default function ProjectAbstract() {
             className={`px-4 py-1.5 rounded text-sm font-medium transition ${
               filter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}>
-            {f}
+            {f === "ALL" ? t("all") :
+             f === "APPROVED" ? t("measurement.verified") :
+             f === "PENDING"  ? t("measurement.pending") :
+                                t("measurement.draft")}
           </button>
         ))}
       </div>
@@ -138,7 +143,11 @@ export default function ProjectAbstract() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {["Abstract ID", "Date", "Items", "Subtotal", "VAT (13%)", "Contingency (4%)", "Grand Total", "Status", "Actions"].map(h => (
+              {[
+                t("materials.id"), t("date"), t("materials.items"),
+                t("abstract.subtotal"), `${t("abstract.vat")}`, `${t("abstract.contingency")}`,
+                t("abstract.grand_total"), t("status"), t("actions")
+              ].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
               ))}
             </tr>
@@ -147,42 +156,43 @@ export default function ProjectAbstract() {
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-10 text-center text-gray-400">
-                  No abstract records. Click "Create Abstract" to get started.
+                  {t("abstract.empty")}
                 </td>
               </tr>
             ) : filtered.map(a => (
               <tr key={a.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">AC-{String(a.id).padStart(4, '0')}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">{a.date}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{a.items?.length || 0} items</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{a.items?.length || 0} {t("materials.items_suffix")}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">NPR {fmt(a.subtotal)}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">NPR {fmt(a.vat_amount)}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">NPR {fmt(a.contingency_amount)}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-blue-700">NPR {fmt(a.grand_total)}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 text-xs rounded font-medium ${STATUS_COLOR[a.status] || "bg-gray-100 text-gray-800"}`}>
-                    {a.status}
+                    {a.status === "APPROVED" ? t("measurement.verified") :
+                     a.status === "PENDING"  ? t("measurement.pending") :
+                                               t("measurement.draft")}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button onClick={() => setViewing(a)} title="View"
+                    <button onClick={() => setViewing(a)} title={t("view")}
                       className="text-gray-500 hover:text-gray-800 p-1 rounded hover:bg-gray-100"><Eye className="w-4 h-4" /></button>
-                    <button onClick={() => { setEditing(a); setShowForm(true); }} title="Edit"
+                    <button onClick={() => { setEditing(a); setShowForm(true); }} title={t("edit")}
                       className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => handleDelete(a.id)} title="Delete"
+                    <button onClick={() => handleDelete(a.id)} title={t("delete")}
                       className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
-          {/* Table footer — sum of currently filtered rows */}
           {filtered.length > 0 && (
             <tfoot>
               <tr className="bg-blue-50 border-t-2 border-blue-200">
                 <td colSpan={3} className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">
-                  {filter === "ALL" ? "Total" : `${filter} Total`}
+                  {filter === "ALL" ? t("total") : `${filter} ${t("total")}`}
                 </td>
                 <td className="px-4 py-2 text-sm font-bold text-gray-700">
                   NPR {fmt(filtered.reduce((s, a) => s + (Number(a.subtotal) || 0), 0))}
@@ -208,22 +218,27 @@ export default function ProjectAbstract() {
 
 // ─── View ─────────────────────────────────────────────────────────────────────
 function AbstractView({ item, onClose }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">AC-{String(item.id).padStart(4, '0')} — Details</h3>
+        <h3 className="text-xl font-semibold">AC-{String(item.id).padStart(4, '0')} — {t("materials.details")}</h3>
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
       </div>
       <div className="bg-white rounded-lg shadow p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm border-b pb-4">
-          <div><p className="text-gray-500">Date</p><p className="font-medium">{item.date}</p></div>
-          <div><p className="text-gray-500">Status</p><p className="font-medium">{item.status}</p></div>
+          <div><p className="text-gray-500">{t("date")}</p><p className="font-medium">{item.date}</p></div>
+          <div><p className="text-gray-500">{t("status")}</p><p className="font-medium">
+            {item.status === "APPROVED" ? t("measurement.verified") :
+             item.status === "PENDING"  ? t("measurement.pending") :
+                                          t("measurement.draft")}
+          </p></div>
         </div>
 
         <table className="w-full border text-sm">
           <thead className="bg-gray-50">
             <tr>
-              {["#", "Description", "Unit", "Quantity", "Rate (NPR)", "Amount (NPR)"].map(h => (
+              {["#", t("abstract.description"), t("measurement.unit"), t("measurement.quantity"), `${t("measurement.rate")}`, `${t("measurement.amount")}`].map(h => (
                 <th key={h} className="px-3 py-2 text-left border font-medium text-gray-600">{h}</th>
               ))}
             </tr>
@@ -245,26 +260,26 @@ function AbstractView({ item, onClose }) {
         <div className="flex justify-end">
           <div className="w-72 border rounded-lg overflow-hidden text-sm">
             <div className="flex justify-between px-4 py-2 border-b">
-              <span className="text-gray-600">Subtotal</span>
+              <span className="text-gray-600">{t("abstract.subtotal")}</span>
               <span className="font-medium">NPR {fmt(item.subtotal)}</span>
             </div>
             <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
-              <span className="text-gray-600">VAT @ 13%</span>
+              <span className="text-gray-600">{t("abstract.vat")}</span>
               <span className="font-medium">NPR {fmt(item.vat_amount)}</span>
             </div>
             <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
-              <span className="text-gray-600">Contingency @ 4%</span>
+              <span className="text-gray-600">{t("abstract.contingency")}</span>
               <span className="font-medium">NPR {fmt(item.contingency_amount)}</span>
             </div>
             <div className="flex justify-between px-4 py-3 bg-blue-600 text-white font-bold">
-              <span>Grand Total</span>
+              <span>{t("abstract.grand_total")}</span>
               <span>NPR {fmt(item.grand_total)}</span>
             </div>
           </div>
         </div>
       </div>
       <div className="flex justify-end">
-        <button onClick={onClose} className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Close</button>
+        <button onClick={onClose} className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">{t("close")}</button>
       </div>
     </div>
   );
@@ -272,6 +287,8 @@ function AbstractView({ item, onClose }) {
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
 function AbstractForm({ projectId, initial, onSave, onCancel }) {
+  const { t } = useTranslation();
+
   const [header, setHeader] = useState({
     date:   initial?.date   || "",
     status: initial?.status || "DRAFT",
@@ -306,7 +323,7 @@ function AbstractForm({ projectId, initial, onSave, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!header.date) { alert("Date is required."); return; }
+    if (!header.date) { alert(t("materials.date_required")); return; }
     const payload = {
       project: parseInt(projectId),
       date:    header.date,
@@ -325,26 +342,28 @@ function AbstractForm({ projectId, initial, onSave, onCancel }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">{initial ? "Edit" : "Create"} Abstract Cost</h3>
+        <h3 className="text-xl font-semibold">
+          {initial ? t("edit") : t("abstract.create")} — {t("project.abstract")}
+        </h3>
         <button onClick={onCancel} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("date")} *</label>
             <input type="date" required value={header.date}
               onChange={e => setHeader(p => ({ ...p, date: e.target.value }))}
               className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("status")}</label>
             <select value={header.status}
               onChange={e => setHeader(p => ({ ...p, status: e.target.value }))}
               className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
-              {["DRAFT", "PENDING", "APPROVED"].map(s =>
-                <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
-              )}
+              <option value="DRAFT">{t("measurement.draft")}</option>
+              <option value="PENDING">{t("measurement.pending")}</option>
+              <option value="APPROVED">{t("measurement.verified")}</option>
             </select>
           </div>
         </div>
@@ -353,7 +372,7 @@ function AbstractForm({ projectId, initial, onSave, onCancel }) {
           <table className="w-full border text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["#", "Description of Work", "Unit", "Quantity", "Rate (NPR)", "Amount (NPR)", ""].map(h => (
+                {["#", t("abstract.description"), t("measurement.unit"), t("measurement.quantity"), t("measurement.rate"), t("measurement.amount"), ""].map(h => (
                   <th key={h} className="px-3 py-2 text-left border text-xs font-medium text-gray-600">{h}</th>
                 ))}
               </tr>
@@ -363,7 +382,7 @@ function AbstractForm({ projectId, initial, onSave, onCancel }) {
                 <tr key={row._key} className="hover:bg-gray-50">
                   <td className="px-2 py-2 border text-center text-gray-500 text-xs">{idx + 1}</td>
                   <td className="px-2 py-2 border">
-                    <input type="text" placeholder="Work description" value={row.description}
+                    <input type="text" placeholder={t("abstract.description")} value={row.description}
                       onChange={e => updateRow(row._key, 'description', e.target.value)}
                       className="w-52 px-2 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-400 rounded" />
                   </td>
@@ -401,25 +420,25 @@ function AbstractForm({ projectId, initial, onSave, onCancel }) {
 
         <button type="button" onClick={() => setRows(r => [...r, newRow()])}
           className="text-blue-600 hover:underline text-sm flex items-center gap-1">
-          <Plus className="w-4 h-4" /> Add Work Item
+          <Plus className="w-4 h-4" /> {t("measurement.add_row")}
         </button>
 
         <div className="flex justify-end">
           <div className="w-72 border rounded-lg overflow-hidden text-sm">
             <div className="flex justify-between px-4 py-2 border-b">
-              <span className="text-gray-600">Subtotal</span>
+              <span className="text-gray-600">{t("abstract.subtotal")}</span>
               <span className="font-medium">NPR {fmt(subtotal)}</span>
             </div>
             <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
-              <span className="text-gray-600">VAT @ 13%</span>
+              <span className="text-gray-600">{t("abstract.vat")}</span>
               <span className="font-medium">NPR {fmt(vat)}</span>
             </div>
             <div className="flex justify-between px-4 py-2 border-b bg-gray-50">
-              <span className="text-gray-600">Contingency @ 4%</span>
+              <span className="text-gray-600">{t("abstract.contingency")}</span>
               <span className="font-medium">NPR {fmt(contingency)}</span>
             </div>
             <div className="flex justify-between px-4 py-3 bg-blue-600 text-white font-bold">
-              <span>Grand Total</span>
+              <span>{t("abstract.grand_total")}</span>
               <span>NPR {fmt(grandTotal)}</span>
             </div>
           </div>
@@ -427,9 +446,9 @@ function AbstractForm({ projectId, initial, onSave, onCancel }) {
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <button type="button" onClick={onCancel}
-            className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Cancel</button>
+            className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">{t("cancel")}</button>
           <button type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Abstract</button>
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">{t("measurement.save")}</button>
         </div>
       </form>
     </div>

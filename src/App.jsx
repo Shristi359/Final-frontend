@@ -6,6 +6,8 @@ import {
   Outlet,
 } from "react-router-dom";
 
+import './i18n';
+
 import { AuthProvider } from "./context/AuthContext";
 
 import Sidebar from "./components/Sidebar";
@@ -32,9 +34,6 @@ import ProjectMeasurement from "./pages/projects/ProjectMeasurement";
 import ProjectAbstract from "./pages/projects/ProjectAbstract";
 import ProjectMaterials from "./pages/projects/ProjectMaterials";
 import ProjectGantt from "./pages/projects/ProjectGantt";
-
-// LOGS
-import ProjectLogs from "./pages/projects/ProjectLogs";
 import WeeklyLogs from "./pages/projects/WeeklyLogs";
 
 // CONTRACTORS
@@ -76,13 +75,9 @@ export default function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          {/* Default Route */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-
-          {/* Public Route */}
           <Route path="/login" element={<Login />} />
 
-          {/* Protected App Layout */}
           <Route
             path="/app"
             element={
@@ -91,10 +86,8 @@ export default function App() {
               </RequireAuth>
             }
           >
-            {/* Dashboard */}
             <Route path="dashboard" element={<Dashboard />} />
 
-            {/* Projects — /add and /edit must come before /:projectId routes */}
             <Route path="projects" element={<ProjectsList />} />
             <Route path="projects/ongoing" element={<OngoingProjects />} />
             <Route path="projects/completed" element={<CompletedProjects />} />
@@ -103,7 +96,6 @@ export default function App() {
             <Route path="projects/add" element={<AddProject />} />
             <Route path="projects/:projectId/edit" element={<EditProject />} />
 
-            {/* Project Details with Tabs */}
             <Route path="projects/:projectId" element={<ProjectLayout />}>
               <Route index element={<Navigate to="overview" replace />} />
               <Route path="overview" element={<ProjectOverview />} />
@@ -114,37 +106,27 @@ export default function App() {
               <Route path="weekly-logs" element={<WeeklyLogs />} />
             </Route>
 
-            {/* Legacy Logs Routes */}
-            <Route path="projects/:projectId/logs" element={<ProjectLogs />} />
-
-            {/* Delay Logs */}
             <Route path="delay-logs" element={<Navigate to="/app/projects/delayed" replace />} />
             <Route path="delay-logs/:projectId" element={<DelayLogs />} />
 
-            {/* Contractors — /add must come before /:id routes */}
             <Route path="contractors" element={<ContractorsList />} />
             <Route path="contractors/add" element={<AddContractor />} />
             <Route path="contractors/:id/view" element={<ContractorDetails />} />
             <Route path="contractors/:id/edit" element={<AddContractor />} />
 
-            {/* Engineers — /add must come before /:id routes */}
             <Route path="engineers" element={<EngineersList />} />
             <Route path="engineers/add" element={<AddEngineer />} />
             <Route path="engineers/:id/view" element={<EngineerDetails />} />
             <Route path="engineers/:id/edit" element={<AddEngineer />} />
 
-            {/* Past Project Records */}
             <Route path="past-records" element={<PastProjectRecords />} />
 
-            {/* Chairpersons */}
             <Route path="chairpersons" element={<ChairpersonsList />} />
             <Route path="chairpersons/add" element={<AddChairperson />} />
 
-            {/* Fallback */}
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
 
-          {/* Global Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Eye, XCircle, Loader2, FolderOpen, Pencil } from "lucide-react";
-import { projectsAPI, contractorsAPI, engineersAPI, chairpersonsAPI, lookupsAPI } from "../../api/axios";
-
+import { projectsAPI } from "../../api/axios";
+import { useTranslation } from 'react-i18next';
 export default function ProjectsList() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
@@ -29,23 +30,23 @@ export default function ProjectsList() {
     if (project.contractor_details) {
       return project.contractor_details.contractor_name || 
              project.contractor_details.company_name || 
-             'Not assigned';
+             t('msg.no_data');
     }
-    return 'Not assigned';
+    return t('msg.no_data');
   };
 
   const getEngineerName = (project) => {
     if (project.assigned_engineer_details?.account?.full_name) {
       return project.assigned_engineer_details.account.full_name;
     }
-    return 'Not assigned';
+    return t('msg.no_data');
   };
 
   const getChairpersonName = (project) => {
     if (project.chairperson_details?.account?.full_name) {
       return project.chairperson_details.account.full_name;
     }
-    return 'Not assigned';
+    return t('msg.no_data');
   };
 
   const handleViewProject = (e, projectId) => {
@@ -66,7 +67,7 @@ export default function ProjectsList() {
     e.preventDefault();
     e.stopPropagation();
     
-    const confirmMessage = `Are you sure you want to cancel project "${project.project_name}"?\n\nThis will:\n- Set status to CANCELLED\n- Remove from ongoing/delayed lists\n- Keep project data for records`;
+    const confirmMessage = `${t('msg.confirm_delete')} "${project.project_name}"?\n\n${t('project_cancel_info')}`;
     
     if (window.confirm(confirmMessage)) {
       try {
@@ -75,10 +76,10 @@ export default function ProjectsList() {
           status: "CANCELLED"
         });
         fetchData();
-        alert("Project cancelled successfully");
+        alert(t('project_cancelled'));
       } catch (error) {
         console.error("Error cancelling project:", error);
-        alert("Failed to cancel project. Please try again.");
+        alert(t('failed_cancel'));
       }
     }
   };
@@ -90,11 +91,11 @@ export default function ProjectsList() {
 
   const getStatusBadge = (status) => {
     const badges = {
-      COMING_SOON: { bg: "bg-blue-100", text: "text-blue-800", label: "Coming Soon" },
-      ONGOING:     { bg: "bg-green-100", text: "text-green-800", label: "Ongoing" },
-      DELAYED:     { bg: "bg-red-100", text: "text-red-800", label: "Delayed" },
-      COMPLETED:   { bg: "bg-purple-100", text: "text-purple-800", label: "Completed" },
-      CANCELLED:   { bg: "bg-gray-100", text: "text-gray-800", label: "Cancelled" }
+      COMING_SOON: { bg: "bg-blue-100", text: "text-blue-800", label: t('project.status.coming_soon') },
+      ONGOING:     { bg: "bg-green-100", text: "text-green-800", label: t('project.status.ongoing') },
+      DELAYED:     { bg: "bg-red-100", text: "text-red-800", label: t('project.status.delayed') },
+      COMPLETED:   { bg: "bg-purple-100", text: "text-purple-800", label: t('project.status.completed') },
+      CANCELLED:   { bg: "bg-gray-100", text: "text-gray-800", label: t('project.status.cancelled') }
     };
     const badge = badges[status] || badges.ONGOING;
     return (
@@ -126,44 +127,49 @@ export default function ProjectsList() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <FolderOpen className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-semibold text-gray-800">All Projects</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">
+            {t('project.all')}
+          </h1>
         </div>
         <button
           onClick={() => navigate("/app/projects/add")}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          Add Project
+          {t('project.add')}
         </button>
       </div>
 
+      {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex flex-wrap gap-3">
-          <FilterButton label="All"         count={counts.all}         isActive={filter === "ALL"}         onClick={() => setFilter("ALL")}         />
-          <FilterButton label="Coming Soon" count={counts.coming_soon} isActive={filter === "COMING_SOON"} onClick={() => setFilter("COMING_SOON")} color="blue"   />
-          <FilterButton label="Ongoing"     count={counts.ongoing}     isActive={filter === "ONGOING"}     onClick={() => setFilter("ONGOING")}     color="green"  />
-          <FilterButton label="Delayed"     count={counts.delayed}     isActive={filter === "DELAYED"}     onClick={() => setFilter("DELAYED")}     color="red"    />
-          <FilterButton label="Completed"   count={counts.completed}   isActive={filter === "COMPLETED"}   onClick={() => setFilter("COMPLETED")}   color="purple" />
-          <FilterButton label="Cancelled"   count={counts.cancelled}   isActive={filter === "CANCELLED"}   onClick={() => setFilter("CANCELLED")}   color="gray"   />
+          <FilterButton label={t('all')} count={counts.all} isActive={filter === "ALL"} onClick={() => setFilter("ALL")} />
+          <FilterButton label={t('project.status.coming_soon')} count={counts.coming_soon} isActive={filter === "COMING_SOON"} onClick={() => setFilter("COMING_SOON")} color="blue" />
+          <FilterButton label={t('project.status.ongoing')} count={counts.ongoing} isActive={filter === "ONGOING"} onClick={() => setFilter("ONGOING")} color="green" />
+          <FilterButton label={t('project.status.delayed')} count={counts.delayed} isActive={filter === "DELAYED"} onClick={() => setFilter("DELAYED")} color="red" />
+          <FilterButton label={t('project.status.completed')} count={counts.completed} isActive={filter === "COMPLETED"} onClick={() => setFilter("COMPLETED")} color="purple" />
+          <FilterButton label={t('project.status.cancelled')} count={counts.cancelled} isActive={filter === "CANCELLED"} onClick={() => setFilter("CANCELLED")} color="gray" />
         </div>
       </div>
 
+      {/* Table */}
       {filteredProjects.length === 0 ? (
         <div className="bg-white p-12 rounded-lg shadow text-center">
           <FolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-700 mb-2">
-            No {filter !== "ALL" ? filter.toLowerCase().replace("_", " ") : ""} projects
+            {t('msg.no_data')}
           </h3>
           <p className="text-gray-500 mb-4">
-            {filter === "ALL" ? "Get started by adding your first project" : `No projects with status "${filter.replace("_", " ")}"`}
+            {filter === "ALL" ? t('get_started') : t('no_projects_status')}
           </p>
           {filter === "ALL" && (
             <button onClick={() => navigate("/app/projects/add")} className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition inline-flex items-center gap-2">
               <Plus className="w-5 h-5" />
-              Add Project
+              {t('project.add')}
             </button>
           )}
         </div>
@@ -172,14 +178,14 @@ export default function ProjectsList() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Code</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contractor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Engineer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Chairperson</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('project.code')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('project.name')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('project.location')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('contractor.name')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('nav.engineers')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('nav.chairpersons')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('status')}</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -190,7 +196,7 @@ export default function ProjectsList() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 font-medium">{project.project_name}</div>
-                    <div className="text-xs text-gray-500">{project.municipality}, Ward {project.ward_no}</div>
+                    <div className="text-xs text-gray-500">{project.municipality}, {t('location.ward')} {project.ward_no}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{project.location || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getContractorName(project)}</td>
@@ -199,12 +205,11 @@ export default function ProjectsList() {
                   <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(project.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
-
                       {/* View */}
                       <button
                         onClick={(e) => handleViewProject(e, project.id)}
                         className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition"
-                        title="View Details"
+                        title={t('view_details')}
                         type="button"
                       >
                         <Eye className="w-5 h-5" />
@@ -215,7 +220,7 @@ export default function ProjectsList() {
                         <button
                           onClick={(e) => handleEditProject(e, project.id)}
                           className="text-amber-600 hover:text-amber-900 p-1 hover:bg-amber-50 rounded transition"
-                          title="Edit Project"
+                          title={t('edit_project')}
                           type="button"
                         >
                           <Pencil className="w-5 h-5" />
@@ -227,13 +232,12 @@ export default function ProjectsList() {
                         <button
                           onClick={(e) => handleCancelProject(e, project)}
                           className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition"
-                          title="Cancel Project"
+                          title={t('cancel_project')}
                           type="button"
                         >
                           <XCircle className="w-5 h-5" />
                         </button>
                       )}
-
                     </div>
                   </td>
                 </tr>
@@ -258,10 +262,14 @@ function FilterButton({ label, count, isActive, onClick, color = "gray" }) {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg border-2 transition-all ${isActive ? colors[color] : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}
+      className={`px-4 py-2 rounded-lg border-2 transition-all ${
+        isActive ? colors[color] : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+      }`}
     >
       <span className="font-medium">{label}</span>
-      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${isActive ? "bg-white bg-opacity-50" : "bg-gray-100"}`}>{count}</span>
+      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${isActive ? "bg-white bg-opacity-50" : "bg-gray-100"}`}>
+        {count}
+      </span>
     </button>
   );
 }

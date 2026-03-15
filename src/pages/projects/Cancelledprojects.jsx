@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, Loader2, XCircle, RotateCcw } from "lucide-react";
 import { projectsAPI } from "../../api/axios";
-
+import { useTranslation } from 'react-i18next';
 export default function CancelledProjects() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,40 +26,44 @@ export default function CancelledProjects() {
   };
 
   const handleRestoreProject = async (project) => {
-    const confirmMessage = `Restore project "${project.project_name}"?\n\nThis will:\n- Set status back to ONGOING\n- Make it visible in active projects`;
-    
+    const confirmMessage = t("cancelled.restore_confirm", {
+      name: project.project_name,
+    });
+
     if (window.confirm(confirmMessage)) {
       try {
         await projectsAPI.update(project.id, {
           ...project,
           status: "ONGOING"
         });
-        
         fetchProjects();
-        alert("Project restored successfully");
+        alert(t("cancelled.restore_success"));
       } catch (error) {
         console.error("Error restoring project:", error);
-        alert("Failed to restore project. Please try again.");
+        alert(t("cancelled.restore_failed"));
       }
     }
   };
 
   const handlePermanentDelete = async (project) => {
-    const confirmMessage = `⚠️ PERMANENT DELETE ⚠️\n\nAre you ABSOLUTELY SURE you want to permanently delete project "${project.project_name}"?\n\nThis will:\n- Delete ALL project data\n- Delete ALL milestones\n- Delete ALL logs\n- This CANNOT be undone!\n\nType the project code "${project.project_code}" to confirm.`;
-    
+    const confirmMessage = t("cancelled.delete_confirm", {
+      name: project.project_name,
+      code: project.project_code,
+    });
+
     const userInput = prompt(confirmMessage);
-    
+
     if (userInput === project.project_code) {
       try {
         await projectsAPI.delete(project.id);
         fetchProjects();
-        alert("Project permanently deleted");
+        alert(t("cancelled.delete_success"));
       } catch (error) {
         console.error("Error deleting project:", error);
-        alert("Failed to delete project. Please try again.");
+        alert(t("cancelled.delete_failed"));
       }
     } else if (userInput !== null) {
-      alert("Project code did not match. Deletion cancelled.");
+      alert(t("cancelled.delete_mismatch"));
     }
   };
 
@@ -75,7 +80,9 @@ export default function CancelledProjects() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <XCircle className="w-8 h-8 text-gray-600" />
-        <h1 className="text-2xl font-semibold text-gray-800">Cancelled Projects</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">
+          {t("cancelled.title")}
+        </h1>
         <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
           {projects.length}
         </span>
@@ -84,7 +91,7 @@ export default function CancelledProjects() {
       {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          <strong>ℹ️ Note:</strong> Cancelled projects are archived here. You can restore them back to ongoing status or permanently delete them.
+          <strong>{t("cancelled.info_note")}</strong> {t("cancelled.info_text")}
         </p>
       </div>
 
@@ -92,20 +99,34 @@ export default function CancelledProjects() {
       {projects.length === 0 ? (
         <div className="bg-white p-12 rounded-lg shadow text-center">
           <XCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Cancelled Projects</h3>
-          <p className="text-gray-500">All your projects are active or completed.</p>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+            {t("cancelled.empty_title")}
+          </h3>
+          <p className="text-gray-500">{t("cancelled.empty_text")}</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Code</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contractor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cancelled Date</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t("project.code")}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t("project.name")}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t("project.location")}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t("contractor.name")}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t("cancelled.cancelled_date")}
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  {t("actions")}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -121,38 +142,40 @@ export default function CancelledProjects() {
                       {project.project_name}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {project.municipality}, Ward {project.ward_no}
+                      {project.municipality}, {t("location.ward")} {project.ward_no}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {project.location || 'N/A'}
+                    {project.location || t("form.select")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {project.contractor?.contractor_name || 'Not assigned'}
+                    {project.contractor?.contractor_name || t("overview.not_assigned")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {project.updated_at ? new Date(project.updated_at).toLocaleDateString() : 'N/A'}
+                    {project.updated_at
+                      ? new Date(project.updated_at).toLocaleDateString()
+                      : "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => navigate(`/app/projects/${project.id}`)}
                         className="text-blue-600 hover:text-blue-900"
-                        title="View Details"
+                        title={t("view")}
                       >
                         <Eye className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleRestoreProject(project)}
                         className="text-green-600 hover:text-green-900"
-                        title="Restore Project"
+                        title={t("cancelled.restore")}
                       >
                         <RotateCcw className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handlePermanentDelete(project)}
                         className="text-red-600 hover:text-red-900"
-                        title="Permanently Delete"
+                        title={t("cancelled.permanent_delete")}
                       >
                         <XCircle className="w-5 h-5" />
                       </button>

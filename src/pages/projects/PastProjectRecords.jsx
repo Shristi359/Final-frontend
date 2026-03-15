@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { pastProjectRecordsAPI } from "../../api/axios";
 import {
   Loader2, Upload, FileSpreadsheet, Trash2,
@@ -6,6 +7,7 @@ import {
 } from "lucide-react";
 
 export default function PastProjectRecords() {
+  const { t } = useTranslation();
   const [records, setRecords]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -21,7 +23,7 @@ export default function PastProjectRecords() {
       setRecords(res.data);
     } catch (err) {
       console.error("Error fetching records:", err);
-      setError("Failed to load records.");
+      setError(t("records.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -36,7 +38,7 @@ export default function PastProjectRecords() {
       "text/csv"
     ];
     if (!allowed.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
-      setError("Only Excel (.xlsx, .xls) or CSV files are allowed.");
+      setError(t("records.invalid_file"));
       return;
     }
 
@@ -49,7 +51,7 @@ export default function PastProjectRecords() {
       setRecords(prev => [res.data, ...prev]);
     } catch (err) {
       console.error("Upload error:", err);
-      setError("Failed to upload file.");
+      setError(t("records.upload_failed"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -69,13 +71,13 @@ export default function PastProjectRecords() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this record file?")) return;
+    if (!window.confirm(t("records.delete_confirm"))) return;
     try {
       await pastProjectRecordsAPI.delete(id);
       setRecords(prev => prev.filter(r => r.id !== id));
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Failed to delete record.");
+      alert(t("records.delete_failed"));
     }
   };
 
@@ -96,8 +98,8 @@ export default function PastProjectRecords() {
       <div className="flex items-center gap-3">
         <FileSpreadsheet className="w-8 h-8 text-green-600" />
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Past Project Records</h1>
-          <p className="text-sm text-gray-500">Upload and manage historical project Excel files</p>
+          <h1 className="text-2xl font-semibold text-gray-800">{t("records.title")}</h1>
+          <p className="text-sm text-gray-500">{t("records.subtitle")}</p>
         </div>
       </div>
 
@@ -131,15 +133,15 @@ export default function PastProjectRecords() {
         {uploading ? (
           <div className="flex flex-col items-center gap-2 text-gray-500">
             <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-            <p className="text-sm font-medium">Uploading...</p>
+            <p className="text-sm font-medium">{t("records.uploading")}</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
             <Upload className="w-8 h-8 text-gray-400" />
             <p className="text-sm font-medium text-gray-700">
-              Drag & drop an Excel file here, or <span className="text-green-600 underline">browse</span>
+              {t("records.drag_drop")} <span className="text-green-600 underline">{t("records.browse")}</span>
             </p>
-            <p className="text-xs text-gray-400">Supported: .xlsx, .xls, .csv</p>
+            <p className="text-xs text-gray-400">{t("records.supported")}</p>
           </div>
         )}
       </div>
@@ -152,14 +154,16 @@ export default function PastProjectRecords() {
       ) : records.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
           <FileSpreadsheet className="w-14 h-14 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">No records uploaded yet</p>
-          <p className="text-sm text-gray-400 mt-1">Upload an Excel file above to get started</p>
+          <p className="text-gray-500 font-medium">{t("records.empty_title")}</p>
+          <p className="text-sm text-gray-400 mt-1">{t("records.empty_text")}</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Uploaded Files</h2>
-            <span className="text-xs text-gray-400">{records.length} file{records.length !== 1 ? "s" : ""}</span>
+            <h2 className="text-sm font-semibold text-gray-700">{t("records.uploaded_files")}</h2>
+            <span className="text-xs text-gray-400">
+              {records.length} {t("records.file_count")}
+            </span>
           </div>
           <ul className="divide-y divide-gray-50">
             {records.map(record => (
@@ -183,14 +187,14 @@ export default function PastProjectRecords() {
                     rel="noreferrer"
                     download
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
-                    title="Download"
+                    title={t("view")}
                   >
                     <Download size={16} />
                   </a>
                   <button
                     onClick={() => handleDelete(record.id)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                    title="Delete"
+                    title={t("delete")}
                   >
                     <Trash2 size={16} />
                   </button>

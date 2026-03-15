@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Loader2, Briefcase, Eye, Pencil } from "lucide-react";
 import { contractorsAPI } from "../../api/axios";
 
 export default function ContractorsList() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,14 +24,14 @@ export default function ContractorsList() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this contractor?")) {
+    if (window.confirm(t("contractors.delete_confirm"))) {
       try {
         await contractorsAPI.delete(id);
         setContractors(prev => prev.filter(c => c.id !== id));
-        alert("Contractor deleted successfully");
+        alert(t("contractors.delete_success"));
       } catch (err) {
         console.error("Error deleting contractor:", err);
-        alert("Failed to delete contractor");
+        alert(t("contractors.delete_failed"));
       }
     }
   };
@@ -45,28 +47,28 @@ export default function ContractorsList() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <Briefcase className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-semibold text-gray-800">Contractors</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">{t("contractors.title")}</h1>
         </div>
         <button
           onClick={() => navigate("/app/contractors/add")}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          Add Contractor
+          {t("contractors.add_btn")}
         </button>
       </div>
 
       {contractors.length === 0 ? (
         <div className="bg-white p-12 rounded-lg shadow text-center">
           <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Contractors Yet</h3>
-          <p className="text-gray-500 mb-4">Get started by adding your first contractor</p>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">{t("contractors.no_contractors")}</h3>
+          <p className="text-gray-500 mb-4">{t("contractors.no_contractors_sub")}</p>
           <button
             onClick={() => navigate("/app/contractors/add")}
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition inline-flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            Add Contractor
+            {t("contractors.add_btn")}
           </button>
         </div>
       ) : (
@@ -74,12 +76,12 @@ export default function ContractorsList() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Suchidarta Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("contractors.col_name")}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("contractors.col_company")}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("contractors.col_type")}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("contractors.col_contact")}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("contractors.col_suchidarta")}</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t("actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -89,7 +91,7 @@ export default function ContractorsList() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.company_name || "N/A"}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                      Type {c.contractor_type || "N/A"}
+                      {t("contractors.col_type")} {c.contractor_type || "N/A"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -98,11 +100,11 @@ export default function ContractorsList() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {c.suchidarta_flagged ? (
                       <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">
-                        ✓ Active (Approved)
+                        ✓ {t("contractors.active_approved")}
                       </span>
                     ) : (
                       <span className="px-3 py-1 text-xs rounded-full bg-orange-100 text-orange-800 font-medium">
-                        ⏳ Pending Approval
+                        ⏳ {t("contractors.pending_approval")}
                       </span>
                     )}
                   </td>
@@ -111,21 +113,21 @@ export default function ContractorsList() {
                       <button
                         onClick={() => navigate(`/app/contractors/${c.id}/view`)}
                         className="text-gray-400 hover:text-blue-600 transition-colors"
-                        title="View details"
+                        title={t("view")}
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => navigate(`/app/contractors/${c.id}/edit`)}
                         className="text-gray-400 hover:text-amber-500 transition-colors"
-                        title="Edit contractor"
+                        title={t("edit")}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(c.id)}
                         className="text-gray-400 hover:text-red-600 transition-colors"
-                        title="Delete contractor"
+                        title={t("delete")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
