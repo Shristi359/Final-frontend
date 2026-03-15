@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { Bell, X, CheckCheck, AlertCircle, Info, AlertTriangle } from "lucide-react";
-
+import { Bell, X, CheckCheck, AlertCircle, Info, AlertTriangle, Globe } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 export default function Topbar() {
+  const { t, i18n } = useTranslation();
   const [user, setUser] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -75,10 +76,15 @@ export default function Topbar() {
 
   const timeAgo = (dateStr) => {
     const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-    if (diff < 60) return "just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
+    if (diff < 60) return t('time.just_now');
+    if (diff < 3600) return `${Math.floor(diff / 60)}${t('time.minutes_ago')}`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}${t('time.hours_ago')}`;
+    return `${Math.floor(diff / 86400)}${t('time.days_ago')}`;
+  };
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'en' ? 'ne' : 'en';
+    i18n.changeLanguage(newLang);
   };
 
   const initials = user?.full_name
@@ -91,7 +97,7 @@ export default function Topbar() {
       {/* Left — greeting */}
       <div>
         <h1 className="text-base font-semibold text-gray-800 leading-tight">
-          {user ? `Welcome back, ${user.full_name.split(" ")[0]} 👋` : "Welcome 👋"}
+          {user ? `${t('welcome_back')}, ${user.full_name.split(" ")[0]} 👋` : `${t('welcome')} 👋`}
         </h1>
         <p className="text-xs text-gray-400">
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
@@ -101,11 +107,27 @@ export default function Topbar() {
       {/* Right */}
       <div className="flex items-center gap-3" ref={panelRef}>
 
+        {/* Language Switcher */}
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors"
+          title={t('change_language')}
+        >
+          <Globe className="w-4 h-4 text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">
+            {i18n.language === 'en' ? 'नेपाली' : 'English'}
+          </span>
+        </button>
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-gray-200" />
+
         {/* Notification Bell */}
         <div className="relative">
           <button
             onClick={() => setShowPanel(v => !v)}
             className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            title={t('notifications')}
           >
             <Bell size={19} className="text-gray-600" />
             {unreadCount > 0 && (
@@ -121,16 +143,16 @@ export default function Topbar() {
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-gray-800">Notifications</span>
+                  <span className="font-semibold text-sm text-gray-800">{t('notifications')}</span>
                   {unreadCount > 0 && (
                     <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                      {unreadCount} new
+                      {unreadCount} {t('new')}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   {unreadCount > 0 && (
-                    <button onClick={markAllRead} title="Mark all as read"
+                    <button onClick={markAllRead} title={t('mark_all_read')}
                       className="text-blue-600 hover:text-blue-800 transition-colors">
                       <CheckCheck size={16} />
                     </button>
@@ -147,7 +169,7 @@ export default function Topbar() {
                 {alerts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-gray-400">
                     <Bell size={28} className="mb-2 opacity-30" />
-                    <p className="text-sm">No notifications yet</p>
+                    <p className="text-sm">{t('no_notifications')}</p>
                   </div>
                 ) : (
                   alerts.map(alert => (
@@ -188,7 +210,7 @@ export default function Topbar() {
           </div>
           <div className="text-sm leading-tight">
             <p className="font-medium text-gray-800 whitespace-nowrap">
-              {user?.full_name ?? "Loading..."}
+              {user?.full_name ?? t('loading')}
             </p>
             <p className="text-xs text-gray-400 capitalize">
               {user?.role?.toLowerCase() ?? ""}

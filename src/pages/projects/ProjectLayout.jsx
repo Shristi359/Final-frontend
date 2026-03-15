@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { 
   FileText, Ruler, FileSpreadsheet, 
   Package, BarChart3, Calendar, ArrowLeft 
@@ -9,11 +10,11 @@ export default function ProjectLayout() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Guard: if projectId is not a valid number, redirect away
     if (!projectId || isNaN(projectId)) {
       navigate("/app/projects");
       return;
@@ -36,12 +37,12 @@ export default function ProjectLayout() {
   };
 
   const tabs = [
-    { name: "Overview",    path: "overview",    icon: FileText },
-    { name: "Measurement", path: "measurement", icon: Ruler },
-    { name: "Abstract",    path: "abstract",    icon: FileSpreadsheet },
-    { name: "Materials",   path: "materials",   icon: Package },
-    { name: "Gantt Chart", path: "gantt",       icon: BarChart3 },
-    { name: "Weekly Logs", path: "weekly-logs", icon: Calendar },
+    { name: t("project.overview"),     path: "overview",    icon: FileText },
+    { name: t("project.measurement"),  path: "measurement", icon: Ruler },
+    { name: t("project.abstract"),     path: "abstract",    icon: FileSpreadsheet },
+    { name: t("project.materials"),    path: "materials",   icon: Package },
+    { name: t("project.gantt"),        path: "gantt",       icon: BarChart3 },
+    { name: t("project.weekly_logs"),  path: "weekly-logs", icon: Calendar },
   ];
 
   const currentPath = location.pathname.split("/").pop();
@@ -49,7 +50,7 @@ export default function ProjectLayout() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading project...</div>
+        <div className="text-gray-500">{t("loading")}</div>
       </div>
     );
   }
@@ -66,10 +67,10 @@ export default function ProjectLayout() {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {project?.project_name || "Project Details"}
+            {project?.project_name || t("project.all")}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Code: {project?.project_code || "N/A"}
+            {t("project.code")}: {project?.project_code || "N/A"}
           </p>
         </div>
       </div>

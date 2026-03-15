@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { Plus, Edit, Trash2, Eye, Loader2, X } from "lucide-react";
 import api from "../../api/axios";
 
@@ -29,6 +30,7 @@ const CAT_COLOR = {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ProjectMeasurement() {
   const { projectId } = useParams();
+  const { t } = useTranslation();
   const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [showForm, setShowForm]         = useState(false);
@@ -51,11 +53,11 @@ export default function ProjectMeasurement() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this measurement book?")) return;
+    if (!window.confirm(t("measurement.delete_confirm"))) return;
     try {
       await measurementAPI.delete(id);
       setMeasurements(prev => prev.filter(m => m.id !== id));
-    } catch { alert("Failed to delete."); }
+    } catch { alert(t("measurement.delete_failed")); }
   };
 
   const handleSave = async (payload) => {
@@ -71,7 +73,6 @@ export default function ProjectMeasurement() {
     } catch (e) {
       const errData = e.response?.data;
       console.error("Save failed:", errData);
-      // Re-throw so MeasurementForm can display it inline
       throw e;
     }
   };
@@ -112,24 +113,24 @@ export default function ProjectMeasurement() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-gray-800">Measurement Book</h3>
+        <h3 className="text-xl font-semibold text-gray-800">{t("measurement.book")}</h3>
         <button
           onClick={() => { setEditing(null); setShowForm(true); }}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm"
         >
-          <Plus className="w-4 h-4" /> New Entry
+          <Plus className="w-4 h-4" /> {t("measurement.add")}
         </button>
       </div>
 
-      {/* Stats — 6 cards */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { label: "TOTAL RECORDS",    val: counts.total,                            cls: "text-gray-800",  isAmount: false },
-          { label: "VERIFIED",         val: counts.verified,                         cls: "text-green-600", isAmount: false },
-          { label: "PENDING",          val: counts.pending,                          cls: "text-yellow-600",isAmount: false },
-          { label: "DRAFT",            val: counts.draft,                            cls: "text-gray-500",  isAmount: false },
-          { label: "TOTAL AMOUNT",     val: "NPR " + fmt(counts.totalAmount),        cls: "text-blue-600",  isAmount: true  },
-          { label: "VERIFIED AMOUNT",  val: "NPR " + fmt(counts.verifiedAmount),     cls: "text-green-700", isAmount: true  },
+          { label: t("measurement.total_records"),   val: counts.total,                        cls: "text-gray-800",   isAmount: false },
+          { label: t("measurement.verified"),        val: counts.verified,                     cls: "text-green-600",  isAmount: false },
+          { label: t("measurement.pending"),         val: counts.pending,                      cls: "text-yellow-600", isAmount: false },
+          { label: t("measurement.draft"),           val: counts.draft,                        cls: "text-gray-500",   isAmount: false },
+          { label: t("measurement.total_amount"),    val: "NPR " + fmt(counts.totalAmount),    cls: "text-blue-600",   isAmount: true  },
+          { label: t("measurement.verified_amount"), val: "NPR " + fmt(counts.verifiedAmount), cls: "text-green-700",  isAmount: true  },
         ].map(s => (
           <div key={s.label} className="bg-white p-4 rounded-lg shadow">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
@@ -145,7 +146,7 @@ export default function ProjectMeasurement() {
             className={`px-4 py-1.5 rounded text-sm font-medium transition ${
               filter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}>
-            {f}
+            {f === "ALL" ? t("all") : t(`measurement.${f.toLowerCase()}`)}
           </button>
         ))}
       </div>
@@ -155,7 +156,15 @@ export default function ProjectMeasurement() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {["MB No.", "Date", "Category", "Items", "Total Amount", "Status", "Actions"].map(h => (
+              {[
+                t("measurement.mb_no"),
+                t("measurement.date"),
+                t("measurement.category"),
+                t("measurement.items"),
+                t("measurement.total_amount"),
+                t("measurement.status"),
+                t("actions"),
+              ].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
               ))}
             </tr>
@@ -164,7 +173,7 @@ export default function ProjectMeasurement() {
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
-                  No measurement records. Click "New Entry" to add one.
+                  {t("measurement.empty")}
                 </td>
               </tr>
             ) : filtered.map(m => (
@@ -178,26 +187,26 @@ export default function ProjectMeasurement() {
                     {m.category}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{m.items?.length || 0} items</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{m.items?.length || 0} {t("measurement.items")}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-blue-700">
                   NPR {fmt(m.total_amount)}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 text-xs rounded font-medium ${STATUS_COLOR[m.status] || "bg-gray-100 text-gray-800"}`}>
-                    {m.status}
+                    {t(`measurement.${m.status.toLowerCase()}`)}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button onClick={() => setViewing(m)} title="View"
+                    <button onClick={() => setViewing(m)} title={t("view")}
                       className="text-gray-500 hover:text-gray-800 p-1 rounded hover:bg-gray-100">
                       <Eye className="w-4 h-4" />
                     </button>
-                    <button onClick={() => { setEditing(m); setShowForm(true); }} title="Edit"
+                    <button onClick={() => { setEditing(m); setShowForm(true); }} title={t("edit")}
                       className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDelete(m.id)} title="Delete"
+                    <button onClick={() => handleDelete(m.id)} title={t("delete")}
                       className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -206,12 +215,11 @@ export default function ProjectMeasurement() {
               </tr>
             ))}
           </tbody>
-          {/* Table footer — sum of currently filtered rows */}
           {filtered.length > 0 && (
             <tfoot>
               <tr className="bg-blue-50 border-t-2 border-blue-200">
                 <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">
-                  {filter === "ALL" ? "Total" : `${filter} Total`}
+                  {filter === "ALL" ? t("total") : `${t(`measurement.${filter.toLowerCase()}`)} ${t("total")}`}
                 </td>
                 <td className="px-4 py-2 text-sm font-bold text-blue-700">
                   NPR {fmt(filtered.reduce((s, m) => s + (Number(m.total_amount) || 0), 0))}
@@ -228,23 +236,26 @@ export default function ProjectMeasurement() {
 
 // ─── View details ─────────────────────────────────────────────────────────────
 function MeasurementView({ item, onClose }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">MB-{String(item.id).padStart(4, '0')} — Details</h3>
+        <h3 className="text-xl font-semibold">MB-{String(item.id).padStart(4, '0')} — {t("measurement.details")}</h3>
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
       </div>
       <div className="bg-white rounded-lg shadow p-6 space-y-4">
         <div className="grid grid-cols-3 gap-4 text-sm border-b pb-4">
-          <div><p className="text-gray-500">Date</p><p className="font-medium">{item.date}</p></div>
-          <div><p className="text-gray-500">Category</p><p className="font-medium">{item.category}</p></div>
-          <div><p className="text-gray-500">Status</p><p className="font-medium">{item.status}</p></div>
+          <div><p className="text-gray-500">{t("measurement.date")}</p><p className="font-medium">{item.date}</p></div>
+          <div><p className="text-gray-500">{t("measurement.category")}</p><p className="font-medium">{item.category}</p></div>
+          <div><p className="text-gray-500">{t("measurement.status")}</p><p className="font-medium">{t(`measurement.${item.status.toLowerCase()}`)}</p></div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["#", "Description", "Nos", "L", "B", "H", "Qty", "Unit", "Rate", "Amount"].map(h => (
+                {["#", t("measurement.description"), t("measurement.nos"), "L", "B", "H",
+                  t("measurement.quantity"), t("measurement.unit"), t("measurement.rate"), t("measurement.amount")
+                ].map(h => (
                   <th key={h} className="px-3 py-2 text-left border font-medium text-gray-600">{h}</th>
                 ))}
               </tr>
@@ -267,7 +278,7 @@ function MeasurementView({ item, onClose }) {
             </tbody>
             <tfoot>
               <tr className="bg-blue-50 font-bold">
-                <td colSpan={9} className="px-3 py-2 border text-right">Total Amount</td>
+                <td colSpan={9} className="px-3 py-2 border text-right">{t("measurement.total_amount")}</td>
                 <td className="px-3 py-2 border text-blue-700">NPR {fmt(item.total_amount)}</td>
               </tr>
             </tfoot>
@@ -275,7 +286,7 @@ function MeasurementView({ item, onClose }) {
         </div>
       </div>
       <div className="flex justify-end">
-        <button onClick={onClose} className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Close</button>
+        <button onClick={onClose} className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">{t("close")}</button>
       </div>
     </div>
   );
@@ -283,6 +294,7 @@ function MeasurementView({ item, onClose }) {
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
 function MeasurementForm({ projectId, initial, onSave, onCancel }) {
+  const { t } = useTranslation();
   const [header, setHeader] = useState({
     date:     initial?.date     || "",
     category: initial?.category || "",
@@ -291,7 +303,6 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
   const [saveError, setSaveError] = useState(null);
   const [saving,    setSaving]    = useState(false);
 
-  // Fetch budget context to enforce cap
   const [estimatedBudget, setEstimatedBudget] = useState(0);
   const [currentUsed,     setCurrentUsed]     = useState(0);
 
@@ -357,42 +368,37 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
 
   const subtotal = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-  // Budget cap check: if status=VERIFIED, would this push used over estimate?
   const wouldExceedBudget = () => {
-    if (estimatedBudget <= 0) return false; // no estimate set — allow
-    if (header.status !== "VERIFIED") return false; // only block on VERIFIED
-    const projectedUsed = currentUsed + subtotal;
-    return projectedUsed > estimatedBudget;
+    if (estimatedBudget <= 0) return false;
+    if (header.status !== "VERIFIED") return false;
+    return (currentUsed + subtotal) > estimatedBudget;
   };
-  const budgetOverage = estimatedBudget > 0
-    ? (currentUsed + subtotal) - estimatedBudget
-    : 0;
-  const remainingBudget = estimatedBudget - currentUsed;
+  const budgetOverage    = estimatedBudget > 0 ? (currentUsed + subtotal) - estimatedBudget : 0;
+  const remainingBudget  = estimatedBudget - currentUsed;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaveError(null);
     if (!header.date || !header.category) {
-      setSaveError("Date and Category are required.");
+      setSaveError(t("measurement.error_date_category"));
       return;
     }
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r.description || !r.description.trim()) {
-        setSaveError(`Row ${i + 1}: Description is required.`);
+        setSaveError(t("measurement.error_description", { row: i + 1 }));
         return;
       }
       if (!r.rate || parseFloat(r.rate) <= 0) {
-        setSaveError(`Row ${i + 1}: Rate must be greater than 0.`);
+        setSaveError(t("measurement.error_rate", { row: i + 1 }));
         return;
       }
     }
-    // ── Budget cap enforcement ─────────────────────────────────────────────────
     if (wouldExceedBudget()) {
       setSaveError(
-        `Cannot set status to VERIFIED — this entry (NPR ${fmt(subtotal)}) would exceed the approved estimate.\n` +
-        `Remaining budget: NPR ${fmt(remainingBudget)} · Over by: NPR ${fmt(budgetOverage)}.\n` +
-        `Save as DRAFT or PENDING instead, or increase the approved Abstract estimate first.`
+        `${t("measurement.budget_exceed_error")}\n` +
+        `${t("measurement.remaining_budget")}: NPR ${fmt(remainingBudget)} · ${t("measurement.over_by")}: NPR ${fmt(budgetOverage)}.\n` +
+        t("measurement.budget_exceed_hint")
       );
       return;
     }
@@ -407,14 +413,12 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
         length:   parseFloat(r.length)    || 0,
         breadth:  parseFloat(r.breadth)   || 0,
         height:   parseFloat(r.height)    || 0,
-        // quantity must be > 0; if no dimensions entered, fall back to nos
         quantity: parseFloat(r.quantity) > 0 ? parseFloat(r.quantity) : (parseInt(r.nos) || 1),
         unit:     r.unit                 || "m³",
         rate:     parseFloat(r.rate)     || 0,
         amount:   parseFloat(r.amount)   || 0,
       })),
     };
-    console.log("Submitting payload:", JSON.stringify(payload, null, 2));
     try {
       setSaving(true);
       await onSave(payload);
@@ -424,7 +428,7 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
         const lines = Object.entries(errData).map(([f, v]) => `${f}: ${Array.isArray(v) ? v.join(", ") : v}`);
         setSaveError(lines.join("\n"));
       } else {
-        setSaveError(e?.message || "Failed to save.");
+        setSaveError(e?.message || t("measurement.save_failed"));
       }
     } finally {
       setSaving(false);
@@ -442,42 +446,44 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">{initial ? "Edit" : "New"} Measurement Entry</h3>
+        <h3 className="text-xl font-semibold">
+          {initial ? t("measurement.edit_entry") : t("measurement.new_entry")}
+        </h3>
         <button onClick={onCancel} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("measurement.date")} *</label>
             <input type="date" required value={header.date}
               onChange={e => setHeader(p => ({ ...p, date: e.target.value }))}
               className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("measurement.category")} *</label>
             <select required value={header.category}
               onChange={e => setHeader(p => ({ ...p, category: e.target.value }))}
               className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
-              <option value="">Select category</option>
+              <option value="">{t("form.select")}</option>
               {["EARTHWORK", "PAVEMENT", "CONCRETE", "DRAINAGE"].map(c =>
                 <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>
               )}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("measurement.status")}</label>
             <select value={header.status}
               onChange={e => setHeader(p => ({ ...p, status: e.target.value }))}
               className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
               {["DRAFT", "PENDING", "VERIFIED"].map(s =>
-                <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+                <option key={s} value={s}>{t(`measurement.${s.toLowerCase()}`)}</option>
               )}
             </select>
           </div>
         </div>
 
-        {/* ── Live Budget Status ── */}
+        {/* Budget Status */}
         {estimatedBudget > 0 && (
           <div className={`rounded-lg border p-3 ${
             wouldExceedBudget()
@@ -487,11 +493,11 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
               : "bg-green-50 border-green-200"
           }`}>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="font-medium text-gray-700">Budget Status</span>
+              <span className="font-medium text-gray-700">{t("measurement.budget_status")}</span>
               <span className={`font-bold ${wouldExceedBudget() ? "text-red-600" : "text-green-700"}`}>
                 {wouldExceedBudget()
-                  ? `⛔ Would exceed by NPR ${fmt(budgetOverage)}`
-                  : `NPR ${fmt(Math.max(0, remainingBudget - subtotal))} remaining after save`}
+                  ? `⛔ ${t("measurement.would_exceed")} NPR ${fmt(budgetOverage)}`
+                  : `NPR ${fmt(Math.max(0, remainingBudget - subtotal))} ${t("measurement.remaining_after_save")}`}
               </span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden flex">
@@ -501,12 +507,12 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
                 style={{ width: `${Math.min((subtotal / estimatedBudget) * 100, Math.max(0, 100 - (currentUsed / estimatedBudget) * 100))}%` }} />
             </div>
             <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-              <span>Already used: NPR {fmt(currentUsed)} · This entry: NPR {fmt(subtotal)}</span>
-              <span>Approved estimate: NPR {fmt(estimatedBudget)}</span>
+              <span>{t("measurement.already_used")}: NPR {fmt(currentUsed)} · {t("measurement.this_entry")}: NPR {fmt(subtotal)}</span>
+              <span>{t("measurement.approved_estimate")}: NPR {fmt(estimatedBudget)}</span>
             </div>
             {wouldExceedBudget() && header.status === "VERIFIED" && (
               <p className="text-xs text-red-600 font-semibold mt-1.5">
-                ⚠ Cannot verify — change status to DRAFT or PENDING, or reduce amounts.
+                ⚠ {t("measurement.cannot_verify")}
               </p>
             )}
           </div>
@@ -516,8 +522,20 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
           <table className="w-full border text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["#", "Description", "Nos", "Length", "Breadth", "Height", "Qty (auto)", "Unit", "Rate (NPR)", "Amount (NPR)", ""].map(h => (
-                  <th key={h} className="px-2 py-2 text-left border text-xs font-medium text-gray-600">{h}</th>
+                {[
+                  "#",
+                  t("measurement.description"),
+                  t("measurement.nos"),
+                  t("measurement.length"),
+                  t("measurement.breadth"),
+                  t("measurement.height"),
+                  t("measurement.qty_auto"),
+                  t("measurement.unit"),
+                  t("measurement.rate"),
+                  t("measurement.amount"),
+                  ""
+                ].map((h, i) => (
+                  <th key={i} className="px-2 py-2 text-left border text-xs font-medium text-gray-600">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -526,7 +544,7 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
                 <tr key={row._key} className="hover:bg-gray-50">
                   <td className="px-2 py-2 border text-center text-gray-500 text-xs">{idx + 1}</td>
                   <td className="px-2 py-2 border">
-                    <input type="text" placeholder="Description" value={row.description}
+                    <input type="text" placeholder={t("measurement.description")} value={row.description}
                       onChange={e => updateRow(row._key, 'description', e.target.value)}
                       className="w-40 px-2 py-1 text-sm rounded focus:ring-1 focus:ring-blue-400 border-0" />
                   </td>
@@ -562,21 +580,21 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
 
         <button type="button" onClick={() => setRows(r => [...r, newRow()])}
           className="text-blue-600 hover:underline text-sm flex items-center gap-1">
-          <Plus className="w-4 h-4" /> Add Row
+          <Plus className="w-4 h-4" /> {t("measurement.add_row")}
         </button>
 
         <div className="flex justify-end">
           <div className="w-72 border rounded-lg overflow-hidden">
             <div className="flex justify-between px-4 py-2 text-sm">
-              <span className="text-gray-600">Subtotal</span>
+              <span className="text-gray-600">{t("measurement.subtotal")}</span>
               <span className="font-medium">NPR {fmt(subtotal)}</span>
             </div>
             <div className="flex justify-between px-4 py-2 text-sm bg-gray-50">
-              <span className="text-gray-600">VAT @ 13%</span>
+              <span className="text-gray-600">{t("measurement.vat")}</span>
               <span className="font-medium">NPR {fmt(subtotal * 0.13)}</span>
             </div>
             <div className="flex justify-between px-4 py-3 text-sm bg-blue-600 text-white font-bold">
-              <span>Grand Total</span>
+              <span>{t("measurement.grand_total")}</span>
               <span>NPR {fmt(subtotal * 1.13)}</span>
             </div>
           </div>
@@ -589,11 +607,11 @@ function MeasurementForm({ projectId, initial, onSave, onCancel }) {
             </div>
           )}
           <button type="button" onClick={onCancel}
-            className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">Cancel</button>
+            className="px-6 py-2 border rounded text-gray-700 hover:bg-gray-50">{t("cancel")}</button>
           <button type="submit" disabled={saving}
             className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 disabled:opacity-60">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            Save Measurement
+            {t("measurement.save")}
           </button>
         </div>
       </form>

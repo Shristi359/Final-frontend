@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { engineersAPI } from "../../api/axios";
 import {
   Loader2, ArrowLeft, Pencil, HardHat,
@@ -9,6 +10,7 @@ import {
 export default function EngineerDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [engineer, setEngineer] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -16,7 +18,7 @@ export default function EngineerDetails() {
   useEffect(() => {
     engineersAPI.get(id)
       .then(res => setEngineer(res.data))
-      .catch(() => setError("Failed to load engineer details."))
+      .catch(() => setError(t("engineer.load_failed")))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -40,11 +42,11 @@ export default function EngineerDetails() {
       <div className="flex items-center justify-between">
         <button onClick={() => navigate("/app/engineers")}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition">
-          <ArrowLeft size={16} /> Back to Engineers
+          <ArrowLeft size={16} /> {t("engineer.back_to_list")}
         </button>
         <button onClick={() => navigate(`/app/engineers/${id}/edit`)}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-md text-sm transition">
-          <Pencil size={14} /> Edit Engineer
+          <Pencil size={14} /> {t("engineer.edit_btn")}
         </button>
       </div>
 
@@ -56,16 +58,16 @@ export default function EngineerDetails() {
           </div>
           <div>
             <h1 className="text-xl font-bold">{e.account?.full_name || "—"}</h1>
-            <p className="text-blue-200 text-sm capitalize">{e.role?.toLowerCase() || "Engineer"}</p>
+            <p className="text-blue-200 text-sm capitalize">{e.role?.toLowerCase() || t("engineer.role_engineer")}</p>
           </div>
         </div>
         {isActive ? (
           <div className="flex items-center gap-2 bg-green-500/20 border border-green-400/40 text-green-200 px-4 py-2 rounded-full text-sm font-medium">
-            <ShieldCheck size={16} /> Active
+            <ShieldCheck size={16} /> {t("engineer.active")}
           </div>
         ) : (
           <div className="flex items-center gap-2 bg-red-500/20 border border-red-400/40 text-red-200 px-4 py-2 rounded-full text-sm font-medium">
-            <ShieldAlert size={16} /> Inactive
+            <ShieldAlert size={16} /> {t("engineer.inactive")}
           </div>
         )}
       </div>
@@ -74,15 +76,15 @@ export default function EngineerDetails() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
           <HardHat size={16} className="text-blue-600" />
-          <h2 className="text-sm font-semibold text-gray-700">Engineer Details</h2>
+          <h2 className="text-sm font-semibold text-gray-700">{t("engineer.engineer_info")}</h2>
         </div>
         <div className="px-5 py-4 grid md:grid-cols-2 gap-4">
-          <Field icon={<User size={14} />}    label="Full Name"  value={e.account?.full_name} />
-          <Field icon={<Mail size={14} />}    label="Email"      value={e.account?.email} />
-          <Field icon={<Hash size={14} />}    label="User ID"    value={e.account?.user_id} />
-          <Field icon={<HardHat size={14} />} label="Role"       value={e.role} />
-          <Field icon={<MapPin size={14} />}  label="Ward No."   value={e.ward_no} />
-          <Field icon={<Hash size={14} />}    label="Account ID" value={e.account?.id} />
+          <Field icon={<User size={14} />}    label={t("engineer.full_name")} value={e.account?.full_name} />
+          <Field icon={<Mail size={14} />}    label={t("engineer.email")}     value={e.account?.email} />
+          <Field icon={<Hash size={14} />}    label={t("engineer.user_id")}   value={e.account?.user_id} />
+          <Field icon={<HardHat size={14} />} label={t("engineer.role")}      value={e.role} />
+          <Field icon={<MapPin size={14} />}  label={t("engineer.ward_no")}   value={e.ward_no} />
+          <Field icon={<Hash size={14} />}    label={t("engineer.account_id")} value={e.account?.id} />
         </div>
       </div>
 
