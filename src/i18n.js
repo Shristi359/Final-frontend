@@ -333,6 +333,7 @@ const resources = {
       "nav.delay_logs": "Delay Logs",
       "nav.past_records": "Past Records",
       "nav.officials": "Officials",
+      "nav.audit_trail": "Audit Trail",
 
       //overview
       "overview.of_estimate": "of estimate",
@@ -661,7 +662,30 @@ const resources = {
       "engineer.delete_success": "Engineer deleted successfully",
       "engineer.delete_failed":  "Failed to delete engineer",
       "calendar.days":   ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
-      "calendar.months": ["Baisakh", "Jestha", "Asar", "Shrawan", "Bhadra", "Ashwin", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"]
+      "calendar.months": ["Baisakh", "Jestha", "Asar", "Shrawan", "Bhadra", "Ashwin", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"],
+      
+      //Audit Trails
+      "audit.title": "Audit Trail",
+      "audit.subtitle": "Complete system activity log",
+      "audit.total_logs": "Total Logs",
+      "audit.inserts": "Inserts",
+      "audit.updates": "Updates",
+      "audit.deletes": "Deletes",
+      "audit.search_placeholder": "Search table or user...",
+      "audit.all_tables": "All Tables",
+      "audit.all_actions": "All Actions",
+      "audit.clear_filters": "Clear filters",
+      "audit.no_logs": "No audit logs found",
+      "audit.no_logs_sub": "Try adjusting your filters",
+      "audit.col_timestamp": "Timestamp",
+      "audit.col_table": "Table",
+      "audit.col_record": "Record ID",
+      "audit.col_action": "Action",
+      "audit.col_changed_by": "Changed By",
+      "audit.detail_title": "Audit Log Details",
+      "audit.changes": "Changes",
+      "audit.new_data": "New Data",
+      "audit.deleted_data": "Deleted Data",
 
     }
   },
@@ -995,6 +1019,7 @@ const resources = {
       "nav.delay_logs": "ढिलाइ लगहरू",
       "nav.past_records": "विगतका अभिलेखहरू",
       "nav.officials": "अधिकारीहरू",
+      "nav.audit_trail": "लेखापरीक्षण अभिलेख",
 
       //Overview
       "overview.of_estimate": "अनुमानको",
@@ -1337,7 +1362,30 @@ const resources = {
       "engineer.delete_success": "इन्जिनियर सफलतापूर्वक मेटाइयो",
       "engineer.delete_failed":  "इन्जिनियर मेटाउन सकिएन",
       "calendar.days":   ["आइत", "सोम", "मंगल", "बुध", "बिही", "शुक्र", "शनि"],
-      "calendar.months": ["बैशाख", "जेठ", "असार", "श्रावण", "भाद्र", "आश्विन", "कार्तिक", "मंसिर", "पुष", "माघ", "फाल्गुण", "चैत्र"]
+      "calendar.months": ["बैशाख", "जेठ", "असार", "श्रावण", "भाद्र", "आश्विन", "कार्तिक", "मंसिर", "पुष", "माघ", "फाल्गुण", "चैत्र"],
+
+      //Audit Trails
+      "audit.title": "लेखापरीक्षण अभिलेख",
+      "audit.subtitle": "पूर्ण प्रणाली गतिविधि लग",
+      "audit.total_logs": "कुल लगहरू",
+      "audit.inserts": "थपिएका",
+      "audit.updates": "अपडेट भएका",
+      "audit.deletes": "मेटाइएका",
+      "audit.search_placeholder": "तालिका वा प्रयोगकर्ता खोज्नुहोस्...",
+      "audit.all_tables": "सबै तालिकाहरू",
+      "audit.all_actions": "सबै कार्यहरू",
+      "audit.clear_filters": "फिल्टर हटाउनुहोस्",
+      "audit.no_logs": "कुनै लेखापरीक्षण लग भेटिएन",
+      "audit.no_logs_sub": "फिल्टर परिवर्तन गरेर हेर्नुहोस्",
+      "audit.col_timestamp": "मिति/समय",
+      "audit.col_table": "तालिका",
+      "audit.col_record": "अभिलेख आईडी",
+      "audit.col_action": "कार्य",
+      "audit.col_changed_by": "परिवर्तन गर्नेको नाम",
+      "audit.detail_title": "लेखापरीक्षण लग विवरण",
+      "audit.changes": "परिवर्तनहरू",
+      "audit.new_data": "नयाँ डाटा",
+      "audit.deleted_data": "मेटाइएको डाटा",
 
     }
   }

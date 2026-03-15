@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Briefcase, FolderKanban,
   Clock, LogOut, ChevronLeft, ChevronRight,
   Users, HardHat, FileSpreadsheet, ChevronDown, ChevronUp,
+  Shield,
 } from "lucide-react";
 import { projectsAPI, delayLogsAPI } from "../api/axios";
 
@@ -42,11 +43,12 @@ export default function Sidebar() {
   };
 
   const NAV_ITEMS = [
-    { to: "/app/dashboard",        icon: LayoutDashboard, labelKey: "nav.dashboard"   },
-    { to: "/app/projects",         icon: FolderKanban,    labelKey: "nav.projects"    },
-    { to: "/app/contractors",      icon: Briefcase,       labelKey: "nav.contractors" },
-    { to: "/app/projects/delayed", icon: Clock,           labelKey: "nav.delay_logs", badge: missingDelayLogs },
-    { to: "/app/past-records",     icon: FileSpreadsheet, labelKey: "nav.past_records"},
+    { to: "/app/dashboard",        icon: LayoutDashboard, labelKey: "nav.dashboard"    },
+    { to: "/app/projects",         icon: FolderKanban,    labelKey: "nav.projects"     },
+    { to: "/app/contractors",      icon: Briefcase,       labelKey: "nav.contractors"  },
+    { to: "/app/projects/delayed", icon: Clock,           labelKey: "nav.delay_logs",  badge: missingDelayLogs },
+    { to: "/app/past-records",     icon: FileSpreadsheet, labelKey: "nav.past_records" },
+    { to: "/app/audit",            icon: Shield,          labelKey: "nav.audit_trail"  },
   ];
 
   const handleLogout = async () => {

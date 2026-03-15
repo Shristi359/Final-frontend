@@ -56,6 +56,9 @@ import PastProjectRecords from "./pages/projects/PastProjectRecords";
 // DELAY LOGS
 import DelayLogs from "./pages/delay/DelayLogs";
 
+// AUDIT TRAIL
+import AuditTrail from "./pages/AuditTrail";
+
 function AppLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
@@ -123,6 +126,8 @@ export default function App() {
 
             <Route path="chairpersons" element={<ChairpersonsList />} />
             <Route path="chairpersons/add" element={<AddChairperson />} />
+
+            <Route path="audit" element={<AuditTrail />} />
 
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
