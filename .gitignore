@@ -4,3 +4,4 @@ dist/
 .env 
 .env.local 
 src/utils/calculations.test.js 
+requirements.txt
