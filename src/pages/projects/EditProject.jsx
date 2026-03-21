@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Loader2, Info, Search, MapPin } from "lucide-react";
 import { projectsAPI } from "../../api/axios";
+import BSDatePicker from "../../components/BSDatePicker"; // ← adjust path if needed
 
 export default function EditProject() {
   const navigate = useNavigate();
@@ -412,12 +413,12 @@ export default function EditProject() {
           </div>
         </Section>
 
-        {/* TIMELINE */}
+        {/* ── TIMELINE — BS date pickers ── */}
         <Section title={t("addproject.section_timeline")}>
-          <DateInput label={t("timeline.proposed")}   name="proposed_date"           value={formData.proposed_date}           onChange={handleInputChange}/>
-          <DateInput label={t("timeline.approved")}   name="approved_date"            value={formData.approved_date}            onChange={handleInputChange}/>
-          <DateInput label={t("timeline.start")}      name="planned_start_date"       value={formData.planned_start_date}       onChange={handleInputChange} required/>
-          <DateInput label={t("timeline.completion")} name="planned_completion_date"  value={formData.planned_completion_date}  onChange={handleInputChange} required/>
+          <BSDatePicker label={t("timeline.proposed")}   name="proposed_date"           value={formData.proposed_date}           onChange={handleInputChange} />
+          <BSDatePicker label={t("timeline.approved")}   name="approved_date"           value={formData.approved_date}           onChange={handleInputChange} />
+          <BSDatePicker label={t("timeline.start")}      name="planned_start_date"      value={formData.planned_start_date}      onChange={handleInputChange} required />
+          <BSDatePicker label={t("timeline.completion")} name="planned_completion_date" value={formData.planned_completion_date} onChange={handleInputChange} required />
           <div>
             <label className="block text-sm text-gray-600 mb-1">{t("addproject.duration_label")}</label>
             <input type="number" name="planned_duration_days" value={formData.planned_duration_days} readOnly
@@ -481,15 +482,4 @@ function Select({ label, name, value, onChange, options = [], required = false }
     </div>
   );
 }
-
-function DateInput({ label, name, value, onChange, required = false }) {
-  return (
-    <div>
-      <label className="block text-sm text-gray-600 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input type="date" name={name} value={value} onChange={onChange} required={required}
-        className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
-    </div>
-  );
-}
+// Note: DateInput removed — BSDatePicker is used directly in the timeline section above.

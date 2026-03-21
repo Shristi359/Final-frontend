@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AlertTriangle, X, Plus, Edit, Trash2, ArrowLeft, Loader2 } from "lucide-react";
 import { delayLogsAPI, projectsAPI, lookupsAPI, authAPI } from "../../api/axios";
+import BSDatePicker from "../../components/BSDatePicker"; // ← adjust path if needed
 
 export default function DelayLogs() {
   const { projectId } = useParams();
@@ -16,7 +17,6 @@ export default function DelayLogs() {
   const [editingLog, setEditingLog] = useState(null);
 
   useEffect(() => {
-    // Guard: redirect if projectId is not a valid number
     if (!projectId || isNaN(projectId)) {
       navigate("/app/projects/delayed", { replace: true });
       return;
@@ -278,7 +278,15 @@ function DelayLogModal({ projectId, projectName, delayTypes, currentUser, editin
         )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <ModalInput label="Log Date *" type="date" name="log_date" value={formData.log_date} onChange={handleChange} required />
+
+          {/* ── Log Date — BS date picker ── */}
+          <BSDatePicker
+            label="Log Date *"
+            name="log_date"
+            value={formData.log_date}
+            onChange={handleChange}
+            required
+          />
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Delay Type *</label>
