@@ -37,18 +37,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    try {
-      // Ensure CSRF cookie is set first
-      await api.get("auth/csrf/");
-      
-      // Perform login
-      const response = await api.post("auth/login/", { email, password });
-      setUser(response.data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  };
+  try {
+    // Get CSRF token
+    const csrfResponse = await api.get("auth/csrf/");
+    const csrfToken = csrfResponse.data.csrfToken;
+    
+    // Perform login with CSRF token in header
+    const response = await api.post("auth/login/", 
+      { email, password },
+      { headers: { "X-CSRFToken": csrfToken } }
+    );
+    setUser(response.data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
   const logout = async () => {
     try {
