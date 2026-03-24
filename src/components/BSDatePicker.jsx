@@ -102,6 +102,13 @@ export default function BSDatePicker({ label, name, value, onChange, required = 
     }
   }, [value]);
 
+  useEffect(() => {
+  const adValue = bsToAd(bsYear, bsMonth, safeDay);
+  if (adValue) {
+    onChange({ target: { name, value: adValue } });
+  }
+}, []);
+
   const daysInMonth = getDaysInBsMonth(bsYear, bsMonth);
   const safeDay     = Math.min(bsDay, daysInMonth);
 
