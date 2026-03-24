@@ -66,16 +66,19 @@ export default function AddProject() {
   }, []);
 
   // Auto-calculate duration when dates change
-  useEffect(() => {
-    if (formData.planned_start_date && formData.planned_completion_date) {
-      const start = new Date(formData.planned_start_date);
-      const end = new Date(formData.planned_completion_date);
-      const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-      if (diffDays >= 0 && diffDays !== parseInt(formData.planned_duration_days)) {
-        setFormData(prev => ({ ...prev, planned_duration_days: diffDays.toString() }));
-      }
+  // ✅ ADD THIS
+useEffect(() => {
+  if (formData.planned_start_date && formData.planned_completion_date) {
+    const [sy, sm, sd] = formData.planned_start_date.split("-").map(Number);
+    const [ey, em, ed] = formData.planned_completion_date.split("-").map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    const end   = new Date(ey, em - 1, ed);
+    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0) {
+      setFormData(prev => ({ ...prev, planned_duration_days: diffDays.toString() }));
     }
-  }, [formData.planned_start_date, formData.planned_completion_date]);
+  }
+}, [formData.planned_start_date, formData.planned_completion_date]);
 
   const fetchDropdownData = async () => {
     try {
