@@ -12,7 +12,11 @@ const api = axios.create({
 // CSRF HANDLING
 api.interceptors.request.use(
   (config) => {
-    const csrfToken = getCookie("csrftoken");
+    const csrfToken = document.cookie
+      .split("; ")
+      .find(row => row.startsWith("csrftoken="))
+      ?.split("=")[1];
+    console.log("CSRF:", csrfToken);
     if (csrfToken) config.headers["X-CSRFToken"] = csrfToken;
     return config;
   },
