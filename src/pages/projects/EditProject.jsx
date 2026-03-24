@@ -84,6 +84,7 @@ export default function EditProject() {
       const p = projectRes.data;
       console.log("project_type from API:", p.project_type, typeof p.project_type);
       console.log("projectTypes dropdown:", projectTypes);
+      console.log("FULL PROJECT DATA:", JSON.stringify(p, null, 2));
       setFormData({
         project_code:            p.project_code            || "",
         project_name:            p.project_name            || "",
