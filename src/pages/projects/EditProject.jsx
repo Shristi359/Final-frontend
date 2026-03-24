@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Loader2, Info, Search, MapPin } from "lucide-react";
-import { projectsAPI } from "../../api/axios";
-import BSDatePicker from "../../components/BSDatePicker"; // ← adjust path if needed
+import { projectsAPI, lookupsAPI, engineersAPI, chairpersonsAPI, contractorsAPI, locationsAPI } from "../../api/axios";
+import BSDatePicker from "../../components/BSDatePicker";
 
 export default function EditProject() {
   const navigate = useNavigate();
@@ -35,10 +35,13 @@ export default function EditProject() {
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState(null);
 
+  // Auto-calculate duration when dates change
   useEffect(() => {
     if (formData.planned_start_date && formData.planned_completion_date) {
-      const start = new Date(formData.planned_start_date);
-      const end   = new Date(formData.planned_completion_date);
+      const [sy, sm, sd] = formData.planned_start_date.split("-").map(Number);
+      const [ey, em, ed] = formData.planned_completion_date.split("-").map(Number);
+      const start = new Date(sy, sm - 1, sd);
+      const end   = new Date(ey, em - 1, ed);
       const diff  = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
       if (diff >= 0 && diff !== parseInt(formData.planned_duration_days)) {
         setFormData(prev => ({ ...prev, planned_duration_days: diff.toString() }));
@@ -53,20 +56,26 @@ export default function EditProject() {
       setLoadingData(true);
       const [
         projectRes,
-        priorityLevels, projectTypes, roadTypes,
-        budgetSources, fiscalYears,
-        engineers, chairpersons, contractors, locations
+        { data: priorityLevels },
+        { data: projectTypes },
+        { data: roadTypes },
+        { data: budgetSources },
+        { data: fiscalYears },
+        { data: engineers },
+        { data: chairpersons },
+        { data: contractors },
+        { data: locations },
       ] = await Promise.all([
         projectsAPI.get(projectId),
-        fetch('/api/lookups/priority-levels/').then(r => r.json()),
-        fetch('/api/lookups/project-types/').then(r => r.json()),
-        fetch('/api/lookups/road-types/').then(r => r.json()),
-        fetch('/api/lookups/budget-sources/').then(r => r.json()),
-        fetch('/api/lookups/fiscal-years/').then(r => r.json()),
-        fetch('/api/engineers/engineer/').then(r => r.json()),
-        fetch('/api/chairpersons/chairperson/').then(r => r.json()),
-        fetch('/api/contractors/contractor/').then(r => r.json()),
-        fetch('/api/locations/location/').then(r => r.json()),
+        lookupsAPI.priorityLevels(),
+        lookupsAPI.projectTypes(),
+        lookupsAPI.roadTypes(),
+        lookupsAPI.budgetSources(),
+        lookupsAPI.fiscalYears(),
+        engineersAPI.list(),
+        chairpersonsAPI.list(),
+        contractorsAPI.list(),
+        locationsAPI.list(),
       ]);
 
       const activeContractors = contractors.filter(c => c.suchidarta_flagged);
@@ -250,8 +259,8 @@ export default function EditProject() {
 
         {/* BASIC INFO */}
         <Section title={t("addproject.section_basic")}>
-          <Input label={t("project.code")}        name="project_code"        value={formData.project_code}        onChange={handleInputChange} placeholder="e.g., PRJ-2026-001"           required />
-          <Input label={t("project.name")}        name="project_name"        value={formData.project_name}        onChange={handleInputChange} placeholder={t("addproject.project_name_placeholder")} required />
+          <Input label={t("project.code")} name="project_code" value={formData.project_code} onChange={handleInputChange} placeholder="e.g., PRJ-2026-001" required />
+          <Input label={t("project.name")} name="project_name" value={formData.project_name} onChange={handleInputChange} placeholder={t("addproject.project_name_placeholder")} required />
           <div>
             <label className="block text-sm text-gray-600 mb-1">{t("addproject.priority")} <span className="text-red-500">*</span></label>
             <select name="priority" value={formData.priority} onChange={handleInputChange} required
@@ -413,7 +422,7 @@ export default function EditProject() {
           </div>
         </Section>
 
-        {/* ── TIMELINE — BS date pickers ── */}
+        {/* TIMELINE */}
         <Section title={t("addproject.section_timeline")}>
           <BSDatePicker label={t("timeline.proposed")}   name="proposed_date"           value={formData.proposed_date}           onChange={handleInputChange} />
           <BSDatePicker label={t("timeline.approved")}   name="approved_date"           value={formData.approved_date}           onChange={handleInputChange} />
@@ -482,4 +491,3 @@ function Select({ label, name, value, onChange, options = [], required = false }
     </div>
   );
 }
-// Note: DateInput removed — BSDatePicker is used directly in the timeline section above.
