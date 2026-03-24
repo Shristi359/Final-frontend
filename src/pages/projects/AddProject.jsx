@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Info, Search, MapPin } from "lucide-react";
-import { projectsAPI } from "../../api/axios";
+import { projectsAPI, lookupsAPI, engineersAPI, chairpersonsAPI, contractorsAPI, locationsAPI, roadsAPI } from "../../api/axios";
 import { useTranslation } from 'react-i18next';
-import BSDatePicker from "../../components/BSDatePicker"; // ← adjust path if needed
+import BSDatePicker from "../../components/BSDatePicker";
 
 export default function AddProject() {
   const navigate = useNavigate();
@@ -80,16 +80,26 @@ export default function AddProject() {
   const fetchDropdownData = async () => {
     try {
       setLoadingData(true);
-      const [priorityLevels, projectTypes, roadTypes, budgetSources, fiscalYears, engineers, chairpersons, contractors, locations] = await Promise.all([
-        fetch('/api/lookups/priority-levels/').then(r => r.json()),
-        fetch('/api/lookups/project-types/').then(r => r.json()),
-        fetch('/api/lookups/road-types/').then(r => r.json()),
-        fetch('/api/lookups/budget-sources/').then(r => r.json()),
-        fetch('/api/lookups/fiscal-years/').then(r => r.json()),
-        fetch('/api/engineers/engineer/').then(r => r.json()),
-        fetch('/api/chairpersons/chairperson/').then(r => r.json()),
-        fetch('/api/contractors/contractor/').then(r => r.json()),
-        fetch('/api/locations/location/').then(r => r.json()),
+      const [
+        { data: priorityLevels },
+        { data: projectTypes },
+        { data: roadTypes },
+        { data: budgetSources },
+        { data: fiscalYears },
+        { data: engineers },
+        { data: chairpersons },
+        { data: contractors },
+        { data: locations }
+      ] = await Promise.all([
+        lookupsAPI.priorityLevels(),
+        lookupsAPI.projectTypes(),
+        lookupsAPI.roadTypes(),
+        lookupsAPI.budgetSources(),
+        lookupsAPI.fiscalYears(),
+        engineersAPI.list(),
+        chairpersonsAPI.list(),
+        contractorsAPI.list(),
+        locationsAPI.list(),
       ]);
       const activeContractors = contractors.filter(c => c.suchidarta_flagged);
       setDropdownData({ priorityLevels, projectTypes, roadTypes, budgetSources, fiscalYears, engineers, chairpersons, contractors: activeContractors, locations });
@@ -206,15 +216,11 @@ export default function AddProject() {
 
       if (isRoadProject() && roadData.road_type) {
         try {
-          await fetch('/api/roads/road/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              project: createdProject.data.id,
-              road_length_km: roadData.road_length_km ? parseFloat(roadData.road_length_km) : null,
-              road_width_m: roadData.road_width_m ? parseFloat(roadData.road_width_m) : null,
-              road_type: parseInt(roadData.road_type)
-            })
+          await roadsAPI.create({
+            project: createdProject.data.id,
+            road_length_km: roadData.road_length_km ? parseFloat(roadData.road_length_km) : null,
+            road_width_m: roadData.road_width_m ? parseFloat(roadData.road_width_m) : null,
+            road_type: parseInt(roadData.road_type)
           });
         } catch (roadError) {
           console.error("Road details error:", roadError);
@@ -444,7 +450,7 @@ export default function AddProject() {
           </div>
         </Section>
 
-        {/* ── TIMELINE — BS date pickers ── */}
+        {/* TIMELINE */}
         <Section title={t("addproject.section_timeline")}>
           <BSDatePicker label={t("timeline.proposed")}   name="proposed_date"           value={formData.proposed_date}           onChange={handleInputChange} />
           <BSDatePicker label={t("timeline.approved")}   name="approved_date"           value={formData.approved_date}           onChange={handleInputChange} />
